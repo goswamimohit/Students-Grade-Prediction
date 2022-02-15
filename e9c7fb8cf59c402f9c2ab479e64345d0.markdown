@@ -1,0 +1,3140 @@
+---
+jupyter:
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+  language_info:
+    codemirror_mode:
+      name: ipython
+      version: 3
+    file_extension: .py
+    mimetype: text/x-python
+    name: python
+    nbconvert_exporter: python
+    pygments_lexer: ipython3
+    version: 3.7.12
+  nbformat: 4
+  nbformat_minor: 5
+  papermill:
+    default_parameters: {}
+    duration: 65.509248
+    end_time: "2022-02-15T13:21:39.209950"
+    environment_variables: {}
+    input_path: \_\_notebook\_\_.ipynb
+    output_path: \_\_notebook\_\_.ipynb
+    parameters: {}
+    start_time: "2022-02-15T13:20:33.700702"
+    version: 2.3.3
+---
+
+::: {.cell .code execution_count="1" _cell_guid="b1076dfc-b9ad-4769-8c92-a6c4dae69d19" _uuid="8f2839f25d086af736a60e9eeb907d3b93b6e0e5" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:44.176981Z\",\"shell.execute_reply.started\":\"2022-02-15T10:32:31.844387Z\",\"iopub.status.idle\":\"2022-02-15T13:20:45.634184Z\",\"iopub.execute_input\":\"2022-02-15T13:20:44.177675Z\",\"shell.execute_reply\":\"2022-02-15T13:20:45.634737Z\"}" papermill="{\"status\":\"completed\",\"duration\":1.562476,\"end_time\":\"2022-02-15T13:20:45.635138\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:44.072662\"}" tags="[]"}
+``` {.python}
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
+from sklearn.ensemble import RandomForestRegressor
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+```
+
+::: {.output .stream .stdout}
+    /kaggle/input/student-performance-data-set/student/student-mat.csv
+    /kaggle/input/student-performance-data-set/student/student-por.csv
+    /kaggle/input/student-performance-data-set/student/student.txt
+:::
+:::
+
+::: {.cell .code execution_count="2" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:45.820184Z\",\"shell.execute_reply.started\":\"2022-02-15T09:26:48.919123Z\",\"iopub.status.idle\":\"2022-02-15T13:20:45.830534Z\",\"iopub.execute_input\":\"2022-02-15T13:20:45.820870Z\",\"shell.execute_reply\":\"2022-02-15T13:20:45.831098Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.105093,\"end_time\":\"2022-02-15T13:20:45.831303\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:45.726210\"}" tags="[]"}
+``` {.python}
+import missingno as msno
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.2439e-2,\"end_time\":\"2022-02-15T13:20:46.015891\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:45.923452\"}" tags="[]"}
+`<img src="https://i.pinimg.com/736x/17/75/e5/1775e59bbb98def37bc34bc7fceeb8db.jpg" width="1100">`{=html}
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":8.7626e-2,\"end_time\":\"2022-02-15T13:20:46.193824\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:46.106198\"}" tags="[]"}
+# Introduction
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":8.7758e-2,\"end_time\":\"2022-02-15T13:20:46.369605\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:46.281847\"}" tags="[]"}
+# Students Performance Dataset
+
+    This data approaches student achievement in secondary education of two Portuguese schools. The data attributes include student grades, demographic, social and school related features) and it was collected by using school reports and questionnaires. Two datasets are provided regarding the performance in two distinct subjects: Mathematics (mat) and Portuguese language (por).
+
+# Source:
+
+Downloads (uminho.pt)
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":8.8031e-2,\"end_time\":\"2022-02-15T13:20:46.545985\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:46.457954\"}" tags="[]"}
+# Attributes for both student:
+
+    - mat.csv (Math course) and student: por.csv (Portuguese language course) datasets:
+
+    1.	school :  student's school (binary: "GP" :  Gabriel Pereira or "MS" :  Mousinho da Silveira)
+    2.	sex :  student's sex (binary: "F" :  female or "M" :  male)
+    3.	age :  student's age (numeric: from 15 to 22)
+    4.	address :  student's home address type (binary: "U" :  urban or "R" :  rural)
+    5.	famsize :  family size (binary: "LE3" :  less or equal to 3 or "GT3" :  greater than 3)
+    6.	Pstatus :  parent's cohabitation status (binary: "T" :  living together or "A" :  apart)
+    7.	Medu :  mother's education (numeric: 0 :  none,  1 :  primary education (4th grade), 2 : 5th to 9th grade, 3 : secondary education or 4: higher education)
+    8.	Fedu :  father's education (numeric: 0 :  none,  1 :  primary education (4th grade), 2 : 5th to 9th grade, 3 : secondary education or 4 : higher education)
+    9.	Mjob :  mother's job (nominal: "teacher", "health" care related, civil "services" (e.g. administrative or police), "at_home" or "other")
+    10.	Fjob :  father's job (nominal: "teacher", "health" care related, civil "services" (e.g. administrative or police), "at_home" or "other")
+    11.	reason :  reason to choose this school (nominal: close to "home", school "reputation", "course" preference or "other")
+    12.	guardian :  student's guardian (nominal: "mother", "father" or "other")
+    13.	traveltime :  home to school travel time (numeric: 1 :  <15 min., 2 :  15 to 30 min., 3 :  30 min. to 1 hour, or 4 :  >1 hour)
+    14.	studytime :  weekly study time (numeric: 1 :  <2 hours, 2 :  2 to 5 hours, 3 :  5 to 10 hours, or 4 :  >10 hours)
+    15.	failures :  number of past class failures (numeric: n if 1<=n<3, else 4)
+    16.	schoolsup :  extra educational support (binary: yes or no)
+    17.	famsup :  family educational support (binary: yes or no)
+    18.	paid :  extra paid classes within the course subject (Math or Portuguese) (binary: yes or no)
+    19.	activities :  extra: curricular activities (binary: yes or no)
+    20.	nursery :  attended nursery school (binary: yes or no)
+    21.	higher :  wants to take higher education (binary: yes or no)
+    22.	internet :  Internet access at home (binary: yes or no)
+    23.	romantic :  with a romantic relationship (binary: yes or no)
+    24.	famrel :  quality of family relationships (numeric: from 1 :  very bad to 5 :  excellent)
+    25.	freetime :  free time after school (numeric: from 1 :  very low to 5 :  very high)
+    26.	goout :  going out with friends (numeric: from 1 :  very low to 5 :  very high)
+    27.	Dalc :  workday alcohol consumption (numeric: from 1 :  very low to 5 :  very high)
+    28.	Walc :  weekend alcohol consumption (numeric: from 1 :  very low to 5 :  very high)
+    29.	health :  current health status (numeric: from 1 :  very bad to 5 :  very good)
+    30.	absences :  number of school absences (numeric: from 0 to 93)
+
+    Grade attributes:
+    31.	G1 :  first period grade (numeric: from 0 to 20)
+    32.	G2 :  second period grade (numeric: from 0 to 20)
+    33.	G3 :  final grade (numeric: from 0 to 20, output target)
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":8.7287e-2,\"end_time\":\"2022-02-15T13:20:46.721100\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:46.633813\"}" tags="[]"}
+# Reading File
+
+### -with help of pandas - using seprator - \';\' {#-with-help-of-pandas---using-seprator---}
+:::
+
+::: {.cell .code execution_count="3" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:46.900691Z\",\"shell.execute_reply.started\":\"2022-02-15T10:32:39.428144Z\",\"iopub.status.idle\":\"2022-02-15T13:20:46.933224Z\",\"iopub.execute_input\":\"2022-02-15T13:20:46.901417Z\",\"shell.execute_reply\":\"2022-02-15T13:20:46.933788Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.124797,\"end_time\":\"2022-02-15T13:20:46.934008\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:46.809211\"}" tags="[]"}
+``` {.python}
+df_mat =pd.read_csv('/kaggle/input/student-performance-data-set/student/student-mat.csv',sep=';')
+df_por =pd.read_csv('/kaggle/input/student-performance-data-set/student/student-por.csv',sep=';')
+```
+:::
+
+::: {.cell .code papermill="{\"status\":\"completed\",\"duration\":8.9637e-2,\"end_time\":\"2022-02-15T13:20:47.113299\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:47.023662\"}" tags="[]"}
+``` {.python}
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.7616e-2,\"end_time\":\"2022-02-15T13:20:47.317105\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:47.219489\"}" tags="[]"}
+# Intial Inspecting of both files
+:::
+
+::: {.cell .code execution_count="4" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:47.543563Z\",\"shell.execute_reply.started\":\"2022-02-15T06:50:55.291941Z\",\"iopub.status.idle\":\"2022-02-15T13:20:47.580264Z\",\"iopub.execute_input\":\"2022-02-15T13:20:47.544607Z\",\"shell.execute_reply\":\"2022-02-15T13:20:47.580935Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.140467,\"end_time\":\"2022-02-15T13:20:47.581130\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:47.440663\"}" tags="[]"}
+``` {.python}
+df_mat.head()
+```
+
+::: {.output .execute_result execution_count="4"}
+```{=html}
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>school</th>
+      <th>sex</th>
+      <th>age</th>
+      <th>address</th>
+      <th>famsize</th>
+      <th>Pstatus</th>
+      <th>Medu</th>
+      <th>Fedu</th>
+      <th>Mjob</th>
+      <th>Fjob</th>
+      <th>...</th>
+      <th>famrel</th>
+      <th>freetime</th>
+      <th>goout</th>
+      <th>Dalc</th>
+      <th>Walc</th>
+      <th>health</th>
+      <th>absences</th>
+      <th>G1</th>
+      <th>G2</th>
+      <th>G3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>18</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>A</td>
+      <td>4</td>
+      <td>4</td>
+      <td>at_home</td>
+      <td>teacher</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>6</td>
+      <td>5</td>
+      <td>6</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>17</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>5</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>4</td>
+      <td>5</td>
+      <td>5</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>3</td>
+      <td>3</td>
+      <td>10</td>
+      <td>7</td>
+      <td>8</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>4</td>
+      <td>2</td>
+      <td>health</td>
+      <td>services</td>
+      <td>...</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>1</td>
+      <td>1</td>
+      <td>5</td>
+      <td>2</td>
+      <td>15</td>
+      <td>14</td>
+      <td>15</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>16</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>3</td>
+      <td>other</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>1</td>
+      <td>2</td>
+      <td>5</td>
+      <td>4</td>
+      <td>6</td>
+      <td>10</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 33 columns</p>
+</div>
+```
+:::
+:::
+
+::: {.cell .code execution_count="5" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:47.768601Z\",\"shell.execute_reply.started\":\"2022-02-15T06:51:04.167040Z\",\"iopub.status.idle\":\"2022-02-15T13:20:47.790133Z\",\"iopub.execute_input\":\"2022-02-15T13:20:47.769582Z\",\"shell.execute_reply\":\"2022-02-15T13:20:47.789559Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.114708,\"end_time\":\"2022-02-15T13:20:47.790287\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:47.675579\"}" tags="[]"}
+``` {.python}
+df_por.head()
+```
+
+::: {.output .execute_result execution_count="5"}
+```{=html}
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>school</th>
+      <th>sex</th>
+      <th>age</th>
+      <th>address</th>
+      <th>famsize</th>
+      <th>Pstatus</th>
+      <th>Medu</th>
+      <th>Fedu</th>
+      <th>Mjob</th>
+      <th>Fjob</th>
+      <th>...</th>
+      <th>famrel</th>
+      <th>freetime</th>
+      <th>goout</th>
+      <th>Dalc</th>
+      <th>Walc</th>
+      <th>health</th>
+      <th>absences</th>
+      <th>G1</th>
+      <th>G2</th>
+      <th>G3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>18</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>A</td>
+      <td>4</td>
+      <td>4</td>
+      <td>at_home</td>
+      <td>teacher</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>4</td>
+      <td>0</td>
+      <td>11</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>17</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>5</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2</td>
+      <td>9</td>
+      <td>11</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>3</td>
+      <td>3</td>
+      <td>6</td>
+      <td>12</td>
+      <td>13</td>
+      <td>12</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>4</td>
+      <td>2</td>
+      <td>health</td>
+      <td>services</td>
+      <td>...</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>1</td>
+      <td>1</td>
+      <td>5</td>
+      <td>0</td>
+      <td>14</td>
+      <td>14</td>
+      <td>14</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>16</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>3</td>
+      <td>other</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>1</td>
+      <td>2</td>
+      <td>5</td>
+      <td>0</td>
+      <td>11</td>
+      <td>13</td>
+      <td>13</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 33 columns</p>
+</div>
+```
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.358e-2,\"end_time\":\"2022-02-15T13:20:47.975213\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:47.881633\"}" tags="[]"}
+# Merging of both datframes into one
+:::
+
+::: {.cell .code execution_count="6" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:48.162270Z\",\"shell.execute_reply.started\":\"2022-02-15T10:32:44.860483Z\",\"iopub.status.idle\":\"2022-02-15T13:20:48.167475Z\",\"iopub.execute_input\":\"2022-02-15T13:20:48.163700Z\",\"shell.execute_reply\":\"2022-02-15T13:20:48.166886Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.102633,\"end_time\":\"2022-02-15T13:20:48.167619\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:48.064986\"}" tags="[]"}
+``` {.python}
+df=pd.concat([df_mat, df_por], ignore_index=True)
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":8.8355e-2,\"end_time\":\"2022-02-15T13:20:48.345538\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:48.257183\"}" tags="[]"}
+# Inspecting of final dataframe
+:::
+
+::: {.cell .code execution_count="7" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:48.529646Z\",\"shell.execute_reply.started\":\"2022-02-15T07:00:24.228662Z\",\"iopub.status.idle\":\"2022-02-15T13:20:48.595297Z\",\"iopub.execute_input\":\"2022-02-15T13:20:48.530726Z\",\"shell.execute_reply\":\"2022-02-15T13:20:48.595771Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.159856,\"end_time\":\"2022-02-15T13:20:48.595974\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:48.436118\"}" tags="[]"}
+``` {.python}
+print('\n')
+print("Number of row and columns in df","-"*80)
+display(df.shape)
+print('\n')
+print('\n')
+print("First five row of df","-"*80)
+display(df.head())
+print('\n')
+print('\n')
+print("Last five row of df","-"*80)
+display(df.tail())
+print('\n')
+print('\n')
+print("data type  of each values in df","-"*80)
+display(df.dtypes)
+print('\n')
+print('\n')
+print("Null values in df","-"*80)
+display(df.isnull().sum())
+print('\n')
+```
+
+::: {.output .stream .stdout}
+
+
+    Number of row and columns in df --------------------------------------------------------------------------------
+:::
+
+::: {.output .display_data}
+    (1044, 33)
+:::
+
+::: {.output .stream .stdout}
+
+
+
+
+    First five row of df --------------------------------------------------------------------------------
+:::
+
+::: {.output .display_data}
+```{=html}
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>school</th>
+      <th>sex</th>
+      <th>age</th>
+      <th>address</th>
+      <th>famsize</th>
+      <th>Pstatus</th>
+      <th>Medu</th>
+      <th>Fedu</th>
+      <th>Mjob</th>
+      <th>Fjob</th>
+      <th>...</th>
+      <th>famrel</th>
+      <th>freetime</th>
+      <th>goout</th>
+      <th>Dalc</th>
+      <th>Walc</th>
+      <th>health</th>
+      <th>absences</th>
+      <th>G1</th>
+      <th>G2</th>
+      <th>G3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>18</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>A</td>
+      <td>4</td>
+      <td>4</td>
+      <td>at_home</td>
+      <td>teacher</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>6</td>
+      <td>5</td>
+      <td>6</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>17</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>5</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>4</td>
+      <td>5</td>
+      <td>5</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>at_home</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>3</td>
+      <td>3</td>
+      <td>10</td>
+      <td>7</td>
+      <td>8</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>15</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>4</td>
+      <td>2</td>
+      <td>health</td>
+      <td>services</td>
+      <td>...</td>
+      <td>3</td>
+      <td>2</td>
+      <td>2</td>
+      <td>1</td>
+      <td>1</td>
+      <td>5</td>
+      <td>2</td>
+      <td>15</td>
+      <td>14</td>
+      <td>15</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>GP</td>
+      <td>F</td>
+      <td>16</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>3</td>
+      <td>other</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>2</td>
+      <td>1</td>
+      <td>2</td>
+      <td>5</td>
+      <td>4</td>
+      <td>6</td>
+      <td>10</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 33 columns</p>
+</div>
+```
+:::
+
+::: {.output .stream .stdout}
+
+
+
+
+    Last five row of df --------------------------------------------------------------------------------
+:::
+
+::: {.output .display_data}
+```{=html}
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>school</th>
+      <th>sex</th>
+      <th>age</th>
+      <th>address</th>
+      <th>famsize</th>
+      <th>Pstatus</th>
+      <th>Medu</th>
+      <th>Fedu</th>
+      <th>Mjob</th>
+      <th>Fjob</th>
+      <th>...</th>
+      <th>famrel</th>
+      <th>freetime</th>
+      <th>goout</th>
+      <th>Dalc</th>
+      <th>Walc</th>
+      <th>health</th>
+      <th>absences</th>
+      <th>G1</th>
+      <th>G2</th>
+      <th>G3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1039</th>
+      <td>MS</td>
+      <td>F</td>
+      <td>19</td>
+      <td>R</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>2</td>
+      <td>3</td>
+      <td>services</td>
+      <td>other</td>
+      <td>...</td>
+      <td>5</td>
+      <td>4</td>
+      <td>2</td>
+      <td>1</td>
+      <td>2</td>
+      <td>5</td>
+      <td>4</td>
+      <td>10</td>
+      <td>11</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>1040</th>
+      <td>MS</td>
+      <td>F</td>
+      <td>18</td>
+      <td>U</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>1</td>
+      <td>teacher</td>
+      <td>services</td>
+      <td>...</td>
+      <td>4</td>
+      <td>3</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>4</td>
+      <td>15</td>
+      <td>15</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>1041</th>
+      <td>MS</td>
+      <td>F</td>
+      <td>18</td>
+      <td>U</td>
+      <td>GT3</td>
+      <td>T</td>
+      <td>1</td>
+      <td>1</td>
+      <td>other</td>
+      <td>other</td>
+      <td>...</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>5</td>
+      <td>6</td>
+      <td>11</td>
+      <td>12</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>1042</th>
+      <td>MS</td>
+      <td>M</td>
+      <td>17</td>
+      <td>U</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>1</td>
+      <td>services</td>
+      <td>services</td>
+      <td>...</td>
+      <td>2</td>
+      <td>4</td>
+      <td>5</td>
+      <td>3</td>
+      <td>4</td>
+      <td>2</td>
+      <td>6</td>
+      <td>10</td>
+      <td>10</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>1043</th>
+      <td>MS</td>
+      <td>M</td>
+      <td>18</td>
+      <td>R</td>
+      <td>LE3</td>
+      <td>T</td>
+      <td>3</td>
+      <td>2</td>
+      <td>services</td>
+      <td>other</td>
+      <td>...</td>
+      <td>4</td>
+      <td>4</td>
+      <td>1</td>
+      <td>3</td>
+      <td>4</td>
+      <td>5</td>
+      <td>4</td>
+      <td>10</td>
+      <td>11</td>
+      <td>11</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 33 columns</p>
+</div>
+```
+:::
+
+::: {.output .stream .stdout}
+
+
+
+
+    data type  of each values in df --------------------------------------------------------------------------------
+:::
+
+::: {.output .display_data}
+    school        object
+    sex           object
+    age            int64
+    address       object
+    famsize       object
+    Pstatus       object
+    Medu           int64
+    Fedu           int64
+    Mjob          object
+    Fjob          object
+    reason        object
+    guardian      object
+    traveltime     int64
+    studytime      int64
+    failures       int64
+    schoolsup     object
+    famsup        object
+    paid          object
+    activities    object
+    nursery       object
+    higher        object
+    internet      object
+    romantic      object
+    famrel         int64
+    freetime       int64
+    goout          int64
+    Dalc           int64
+    Walc           int64
+    health         int64
+    absences       int64
+    G1             int64
+    G2             int64
+    G3             int64
+    dtype: object
+:::
+
+::: {.output .stream .stdout}
+
+
+
+
+    Null values in df --------------------------------------------------------------------------------
+:::
+
+::: {.output .display_data}
+    school        0
+    sex           0
+    age           0
+    address       0
+    famsize       0
+    Pstatus       0
+    Medu          0
+    Fedu          0
+    Mjob          0
+    Fjob          0
+    reason        0
+    guardian      0
+    traveltime    0
+    studytime     0
+    failures      0
+    schoolsup     0
+    famsup        0
+    paid          0
+    activities    0
+    nursery       0
+    higher        0
+    internet      0
+    romantic      0
+    famrel        0
+    freetime      0
+    goout         0
+    Dalc          0
+    Walc          0
+    health        0
+    absences      0
+    G1            0
+    G2            0
+    G3            0
+    dtype: int64
+:::
+
+::: {.output .stream .stdout}
+:::
+:::
+
+::: {.cell .code execution_count="8" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:48.792367Z\",\"shell.execute_reply.started\":\"2022-02-15T06:54:51.062196Z\",\"iopub.status.idle\":\"2022-02-15T13:20:51.928302Z\",\"iopub.execute_input\":\"2022-02-15T13:20:48.793383Z\",\"shell.execute_reply\":\"2022-02-15T13:20:51.928820Z\"}" papermill="{\"status\":\"completed\",\"duration\":3.238864,\"end_time\":\"2022-02-15T13:20:51.929030\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:48.690166\"}" tags="[]"}
+``` {.python}
+msno.bar(df);
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/47b01d1b78281adbb461ce832f8428daaba0b8da.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.7075e-2,\"end_time\":\"2022-02-15T13:20:52.125144\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:52.028069\"}" tags="[]"}
+## Chaging dtype into category
+:::
+
+::: {.cell .code execution_count="9" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:52.323277Z\",\"shell.execute_reply.started\":\"2022-02-15T10:32:57.856245Z\",\"iopub.status.idle\":\"2022-02-15T13:20:52.350357Z\",\"iopub.execute_input\":\"2022-02-15T13:20:52.324251Z\",\"shell.execute_reply\":\"2022-02-15T13:20:52.350882Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.128162,\"end_time\":\"2022-02-15T13:20:52.351103\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:52.222941\"}" tags="[]"}
+``` {.python}
+for col in['school', 'sex', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
+       'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime',
+       'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery',
+       'higher', 'internet', 'romantic', 'famrel', 'freetime', 'goout', 'Dalc',
+       'Walc', 'health']:
+    df[col] = df[col].astype('category')
+```
+:::
+
+::: {.cell .code execution_count="10" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:52.549867Z\",\"shell.execute_reply.started\":\"2022-02-15T07:07:45.862015Z\",\"iopub.status.idle\":\"2022-02-15T13:20:52.579444Z\",\"iopub.execute_input\":\"2022-02-15T13:20:52.550572Z\",\"shell.execute_reply\":\"2022-02-15T13:20:52.580022Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.131912,\"end_time\":\"2022-02-15T13:20:52.580196\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:52.448284\"}" tags="[]"}
+``` {.python}
+df.info()
+```
+
+::: {.output .stream .stdout}
+    <class 'pandas.core.frame.DataFrame'>
+    RangeIndex: 1044 entries, 0 to 1043
+    Data columns (total 33 columns):
+     #   Column      Non-Null Count  Dtype   
+    ---  ------      --------------  -----   
+     0   school      1044 non-null   category
+     1   sex         1044 non-null   category
+     2   age         1044 non-null   int64   
+     3   address     1044 non-null   category
+     4   famsize     1044 non-null   category
+     5   Pstatus     1044 non-null   category
+     6   Medu        1044 non-null   category
+     7   Fedu        1044 non-null   category
+     8   Mjob        1044 non-null   category
+     9   Fjob        1044 non-null   category
+     10  reason      1044 non-null   category
+     11  guardian    1044 non-null   category
+     12  traveltime  1044 non-null   category
+     13  studytime   1044 non-null   category
+     14  failures    1044 non-null   category
+     15  schoolsup   1044 non-null   category
+     16  famsup      1044 non-null   category
+     17  paid        1044 non-null   category
+     18  activities  1044 non-null   category
+     19  nursery     1044 non-null   category
+     20  higher      1044 non-null   category
+     21  internet    1044 non-null   category
+     22  romantic    1044 non-null   category
+     23  famrel      1044 non-null   category
+     24  freetime    1044 non-null   category
+     25  goout       1044 non-null   category
+     26  Dalc        1044 non-null   category
+     27  Walc        1044 non-null   category
+     28  health      1044 non-null   category
+     29  absences    1044 non-null   int64   
+     30  G1          1044 non-null   int64   
+     31  G2          1044 non-null   int64   
+     32  G3          1044 non-null   int64   
+    dtypes: category(28), int64(5)
+    memory usage: 74.0 KB
+:::
+:::
+
+::: {.cell .code execution_count="11" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:52.778702Z\",\"shell.execute_reply.started\":\"2022-02-15T07:53:18.748243Z\",\"iopub.status.idle\":\"2022-02-15T13:20:52.827293Z\",\"iopub.execute_input\":\"2022-02-15T13:20:52.779339Z\",\"shell.execute_reply\":\"2022-02-15T13:20:52.827894Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.151323,\"end_time\":\"2022-02-15T13:20:52.828182\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:52.676859\"}" tags="[]"}
+``` {.python}
+result = df.select_dtypes(include='category')
+for i in result:
+    print(result[i].value_counts())
+    print('\n')
+```
+
+::: {.output .stream .stdout}
+    GP    772
+    MS    272
+    Name: school, dtype: int64
+
+
+    F    591
+    M    453
+    Name: sex, dtype: int64
+
+
+    U    759
+    R    285
+    Name: address, dtype: int64
+
+
+    GT3    738
+    LE3    306
+    Name: famsize, dtype: int64
+
+
+    T    923
+    A    121
+    Name: Pstatus, dtype: int64
+
+
+    4    306
+    2    289
+    3    238
+    1    202
+    0      9
+    Name: Medu, dtype: int64
+
+
+    2    324
+    1    256
+    3    231
+    4    224
+    0      9
+    Name: Fedu, dtype: int64
+
+
+    other       399
+    services    239
+    at_home     194
+    teacher     130
+    health       82
+    Name: Mjob, dtype: int64
+
+
+    other       584
+    services    292
+    teacher      65
+    at_home      62
+    health       41
+    Name: Fjob, dtype: int64
+
+
+    course        430
+    home          258
+    reputation    248
+    other         108
+    Name: reason, dtype: int64
+
+
+    mother    728
+    father    243
+    other      73
+    Name: guardian, dtype: int64
+
+
+    1    623
+    2    320
+    3     77
+    4     24
+    Name: traveltime, dtype: int64
+
+
+    2    503
+    1    317
+    3    162
+    4     62
+    Name: studytime, dtype: int64
+
+
+    0    861
+    1    120
+    2     33
+    3     30
+    Name: failures, dtype: int64
+
+
+    no     925
+    yes    119
+    Name: schoolsup, dtype: int64
+
+
+    yes    640
+    no     404
+    Name: famsup, dtype: int64
+
+
+    no     824
+    yes    220
+    Name: paid, dtype: int64
+
+
+    no     528
+    yes    516
+    Name: activities, dtype: int64
+
+
+    yes    835
+    no     209
+    Name: nursery, dtype: int64
+
+
+    yes    955
+    no      89
+    Name: higher, dtype: int64
+
+
+    yes    827
+    no     217
+    Name: internet, dtype: int64
+
+
+    no     673
+    yes    371
+    Name: romantic, dtype: int64
+
+
+    4    512
+    5    286
+    3    169
+    2     47
+    1     30
+    Name: famrel, dtype: int64
+
+
+    3    408
+    4    293
+    2    171
+    5    108
+    1     64
+    Name: freetime, dtype: int64
+
+
+    3    335
+    2    248
+    4    227
+    5    163
+    1     71
+    Name: goout, dtype: int64
+
+
+    1    727
+    2    196
+    3     69
+    4     26
+    5     26
+    Name: Dalc, dtype: int64
+
+
+    1    398
+    2    235
+    3    200
+    4    138
+    5     73
+    Name: Walc, dtype: int64
+
+
+    5    395
+    3    215
+    4    174
+    1    137
+    2    123
+    Name: health, dtype: int64
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.9583e-2,\"end_time\":\"2022-02-15T13:20:53.029340\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:52.929757\"}" tags="[]"}
+# Five point data summaries
+:::
+
+::: {.cell .code execution_count="12" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:53.230881Z\",\"shell.execute_reply.started\":\"2022-02-15T13:05:30.375264Z\",\"iopub.status.idle\":\"2022-02-15T13:20:53.320522Z\",\"iopub.execute_input\":\"2022-02-15T13:20:53.231936Z\",\"shell.execute_reply\":\"2022-02-15T13:20:53.319805Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.191403,\"end_time\":\"2022-02-15T13:20:53.320674\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:53.129271\"}" tags="[]"}
+``` {.python}
+df.describe(include="all").round().T
+```
+
+::: {.output .execute_result execution_count="12"}
+```{=html}
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>count</th>
+      <th>unique</th>
+      <th>top</th>
+      <th>freq</th>
+      <th>mean</th>
+      <th>std</th>
+      <th>min</th>
+      <th>25%</th>
+      <th>50%</th>
+      <th>75%</th>
+      <th>max</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>school</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>GP</td>
+      <td>772</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>sex</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>F</td>
+      <td>591</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>age</th>
+      <td>1044.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>17.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>16.0</td>
+      <td>17.0</td>
+      <td>18.0</td>
+      <td>22.0</td>
+    </tr>
+    <tr>
+      <th>address</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>U</td>
+      <td>759</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>famsize</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>GT3</td>
+      <td>738</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Pstatus</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>T</td>
+      <td>923</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Medu</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>4.0</td>
+      <td>306.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Fedu</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>2.0</td>
+      <td>324.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Mjob</th>
+      <td>1044</td>
+      <td>5</td>
+      <td>other</td>
+      <td>399</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Fjob</th>
+      <td>1044</td>
+      <td>5</td>
+      <td>other</td>
+      <td>584</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>reason</th>
+      <td>1044</td>
+      <td>4</td>
+      <td>course</td>
+      <td>430</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>guardian</th>
+      <td>1044</td>
+      <td>3</td>
+      <td>mother</td>
+      <td>728</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>traveltime</th>
+      <td>1044.0</td>
+      <td>4.0</td>
+      <td>1.0</td>
+      <td>623.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>studytime</th>
+      <td>1044.0</td>
+      <td>4.0</td>
+      <td>2.0</td>
+      <td>503.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>failures</th>
+      <td>1044.0</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>861.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>schoolsup</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>no</td>
+      <td>925</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>famsup</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>yes</td>
+      <td>640</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>paid</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>no</td>
+      <td>824</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>activities</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>no</td>
+      <td>528</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>nursery</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>yes</td>
+      <td>835</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>higher</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>yes</td>
+      <td>955</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>internet</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>yes</td>
+      <td>827</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>romantic</th>
+      <td>1044</td>
+      <td>2</td>
+      <td>no</td>
+      <td>673</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>famrel</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>4.0</td>
+      <td>512.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>freetime</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>3.0</td>
+      <td>408.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>goout</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>3.0</td>
+      <td>335.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Dalc</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>1.0</td>
+      <td>727.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>Walc</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>1.0</td>
+      <td>398.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>health</th>
+      <td>1044.0</td>
+      <td>5.0</td>
+      <td>5.0</td>
+      <td>395.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>absences</th>
+      <td>1044.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>4.0</td>
+      <td>6.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>2.0</td>
+      <td>6.0</td>
+      <td>75.0</td>
+    </tr>
+    <tr>
+      <th>G1</th>
+      <td>1044.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>11.0</td>
+      <td>3.0</td>
+      <td>0.0</td>
+      <td>9.0</td>
+      <td>11.0</td>
+      <td>13.0</td>
+      <td>19.0</td>
+    </tr>
+    <tr>
+      <th>G2</th>
+      <td>1044.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>11.0</td>
+      <td>3.0</td>
+      <td>0.0</td>
+      <td>9.0</td>
+      <td>11.0</td>
+      <td>13.0</td>
+      <td>19.0</td>
+    </tr>
+    <tr>
+      <th>G3</th>
+      <td>1044.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>11.0</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>10.0</td>
+      <td>11.0</td>
+      <td>14.0</td>
+      <td>20.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+```
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.8682e-2,\"end_time\":\"2022-02-15T13:20:53.519259\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:53.420577\"}" tags="[]"}
+# Univarate Analysis
+
+------------------------------------------------------------------------
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":9.8812e-2,\"end_time\":\"2022-02-15T13:20:53.717283\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:53.618471\"}" tags="[]"}
+## Distribution of Categotical Varriable
+
+------------------------------------------------------------------------
+:::
+
+::: {.cell .code execution_count="13" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:53.927458Z\",\"shell.execute_reply.started\":\"2022-02-15T10:33:06.190449Z\",\"iopub.status.idle\":\"2022-02-15T13:20:53.928827Z\",\"iopub.execute_input\":\"2022-02-15T13:20:53.928192Z\",\"shell.execute_reply\":\"2022-02-15T13:20:53.929400Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.112813,\"end_time\":\"2022-02-15T13:20:53.929556\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:53.816743\"}" tags="[]"}
+``` {.python}
+plt.rcParams.update({'figure.max_open_warning': 0})
+```
+:::
+
+::: {.cell .code execution_count="14" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:54.132641Z\",\"shell.execute_reply.started\":\"2022-02-15T07:45:28.383702Z\",\"iopub.status.idle\":\"2022-02-15T13:20:58.660718Z\",\"iopub.execute_input\":\"2022-02-15T13:20:54.133297Z\",\"shell.execute_reply\":\"2022-02-15T13:20:58.660055Z\"}" papermill="{\"status\":\"completed\",\"duration\":4.630522,\"end_time\":\"2022-02-15T13:20:58.660863\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:54.030341\"}" tags="[]"}
+``` {.python}
+df1 = df.select_dtypes(exclude=['int64'])
+for i, col in enumerate(df1.columns):
+    plt.figure(i)
+    plt.figure() #this creates a new figure on which your plot will appear
+    sns.countplot(x=col, data=df1,palette="Set3")
+    plt.show()
+```
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/d0a912d0bb1846631f4e79155a96acf1a0d548a7.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/5a9284ab76ecb6af8c8b4d6f85046db9d3adce25.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/53dd7d24dec04cd382053655c084395e4236e9ce.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/814806ba64bc630041d51f6ab3d6be993e9f34fa.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/42aa25fe6e028a9c58a14acaaf4d13c6a25676ca.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/49f3dba60d42b50de33d86c14f4161b15759e112.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/80fc7605c74abc6beaf9b6b69a56c17835125a91.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/f7c109cedd57b084336ad3b4c51430244549c487.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/ef0d6986f9f9de9795f2b235adfb263f1c500595.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/13cd632cdaa95bdf1fe7ca57158b5780e897fccd.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/82cf9ae54a225784d2b6adaad436f29a1bbb4383.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/a1a1d3228fa20d677f3bf6a2719a453381a3dd10.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/9d730d6be5f3c4ff0b1a4a9be7472bfe1df70c38.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/e74e5be43d2f0b9dbac12d8ad79a0bc98cc5a035.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/40e6be66bc4161b2c0d1226867578e183cf51f19.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/6e2bbba45a321d7459961f60c89a6ffdbad57768.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/784ff4001d646aa8ff09de43d081f8501cf3f5a2.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/d126780af3b0320d6623743d8c57c9ef6a6d8555.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/865b468f8bfed8d45ba698dc329767f4e1b2db79.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/e48625f971fff6970d2d20d3bff7199e78692ce5.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/97771c795d2e521cae6b82ad4553655dec129ac7.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/8184664d19ed225c8a603a583ac6443a3afbbcd2.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/78b9f5470912e2f482ed3bed1232476d194e0b50.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/363458fa5b5ba5521fa72ac6a5ee466ccf8a1fcf.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/7ff73bac3f98293fe146d746b8778d287f577010.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/e8f1e02898c94af44f83244184326951ce91404f.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/7411d1832489b251928e5e3808cbeaf923594a6e.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/2ac11066a8c197dd524bf130b2914e21acc22a9a.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.135095,\"end_time\":\"2022-02-15T13:20:58.932117\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:58.797022\"}" tags="[]"}
+## Distribution of Numerical Varriable
+
+------------------------------------------------------------------------
+:::
+
+::: {.cell .code execution_count="15" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:59.208076Z\",\"iopub.status.idle\":\"2022-02-15T13:20:59.210757Z\",\"iopub.execute_input\":\"2022-02-15T13:20:59.208772Z\",\"shell.execute_reply\":\"2022-02-15T13:20:59.210261Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.141765,\"end_time\":\"2022-02-15T13:20:59.210924\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:59.069159\"}" tags="[]"}
+``` {.python}
+# title=["distribution of age",'distribution of absence in class','distribution of Grade 1',
+#        'distribution of Grade 2','distribution of Grade 3']
+```
+:::
+
+::: {.cell .code execution_count="16" execution="{\"iopub.status.busy\":\"2022-02-15T13:20:59.502320Z\",\"shell.execute_reply.started\":\"2022-02-15T07:51:13.407681Z\",\"iopub.status.idle\":\"2022-02-15T13:21:00.659747Z\",\"iopub.execute_input\":\"2022-02-15T13:20:59.519935Z\",\"shell.execute_reply\":\"2022-02-15T13:21:00.660326Z\"}" papermill="{\"status\":\"completed\",\"duration\":1.308753,\"end_time\":\"2022-02-15T13:21:00.660537\",\"exception\":false,\"start_time\":\"2022-02-15T13:20:59.351784\"}" tags="[]"}
+``` {.python}
+df1 = df.select_dtypes(include=['int64'])
+for i, col in enumerate(df1.columns):
+    plt.figure(i)
+    plt.figure() #this creates a new figure on which your plot will appear
+    sns.histplot(x=col, data=df1,palette="Set3",kde=True,bins=10)
+    plt.show()
+```
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/f18317799ac9bba54455e71aaef7edf2996be234.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/aef4af169d290bb59a04fa6eef61840f1306b285.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/2bc8dd0e4d01d8b8a1fc6e385ff38a7fbecb46cc.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/36a2bdf5155a9f9e12a9870e0760af5384f2783d.png)
+:::
+
+::: {.output .display_data}
+    <Figure size 432x288 with 0 Axes>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/bf916b791af71b005dcfe33c88bbe89b72152680.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.143147,\"end_time\":\"2022-02-15T13:21:00.947828\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:00.804681\"}" tags="[]"}
+# Bivarate Analysis
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.143423,\"end_time\":\"2022-02-15T13:21:01.237303\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:01.093880\"}" tags="[]"}
+## Schoolsup with the Grades of the subject
+
+(schoolsup : extra educational support (binary: yes or no))
+:::
+
+::: {.cell .code execution_count="17" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:01.541704Z\",\"shell.execute_reply.started\":\"2022-02-15T09:32:05.306881Z\",\"iopub.status.idle\":\"2022-02-15T13:21:01.746365Z\",\"iopub.execute_input\":\"2022-02-15T13:21:01.542729Z\",\"shell.execute_reply\":\"2022-02-15T13:21:01.746941Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.362811,\"end_time\":\"2022-02-15T13:21:01.747145\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:01.384334\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="schoolsup", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/c7b50b8541c335938e8acf6d9130ad0569049850.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.144436,\"end_time\":\"2022-02-15T13:21:02.038161\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:01.893725\"}" tags="[]"}
+## Family Support with the grades of the subject
+
+(family educational support (binary: yes or no))
+:::
+
+::: {.cell .code execution_count="18" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:02.331872Z\",\"shell.execute_reply.started\":\"2022-02-15T09:33:28.485469Z\",\"iopub.status.idle\":\"2022-02-15T13:21:02.530530Z\",\"iopub.execute_input\":\"2022-02-15T13:21:02.332896Z\",\"shell.execute_reply\":\"2022-02-15T13:21:02.529706Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.349442,\"end_time\":\"2022-02-15T13:21:02.530699\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:02.181257\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="famsup", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/925943934d727fa59421cbdb65ca181a74488f82.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.144112,\"end_time\":\"2022-02-15T13:21:02.819251\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:02.675139\"}" tags="[]"}
+## Nursery class status with the grades of the subject
+
+(attended nursery school (binary: yes or no))
+:::
+
+::: {.cell .code execution_count="19" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:03.118731Z\",\"shell.execute_reply.started\":\"2022-02-15T09:34:31.868992Z\",\"iopub.status.idle\":\"2022-02-15T13:21:03.315678Z\",\"iopub.execute_input\":\"2022-02-15T13:21:03.119458Z\",\"shell.execute_reply\":\"2022-02-15T13:21:03.316216Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.347952,\"end_time\":\"2022-02-15T13:21:03.316422\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:02.968470\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="nursery", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/42b203334ceaad7489eab0d4bad6cf96abe870d2.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.144467,\"end_time\":\"2022-02-15T13:21:03.605574\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:03.461107\"}" tags="[]"}
+## Health with the grades of the subject
+
+(current health status (numeric: from 1 : very bad to 5 : very good))
+:::
+
+::: {.cell .code execution_count="20" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:03.903767Z\",\"shell.execute_reply.started\":\"2022-02-15T09:35:24.669279Z\",\"iopub.status.idle\":\"2022-02-15T13:21:04.152056Z\",\"iopub.execute_input\":\"2022-02-15T13:21:03.904440Z\",\"shell.execute_reply\":\"2022-02-15T13:21:04.151485Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.399707,\"end_time\":\"2022-02-15T13:21:04.152217\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:03.752510\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="health", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/8c8ee7a61ad0c41519968f071385a5ebc7ab47f7.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.147877,\"end_time\":\"2022-02-15T13:21:04.446543\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:04.298666\"}" tags="[]"}
+## Effect of famsize on students performance
+
+(famsize : family size (binary: \"LE3\" : less or equal to 3 or \"GT3\"
+: greater than 3))
+:::
+
+::: {.cell .code execution_count="21" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:04.738644Z\",\"shell.execute_reply.started\":\"2022-02-15T09:36:29.810407Z\",\"iopub.status.idle\":\"2022-02-15T13:21:04.939838Z\",\"iopub.execute_input\":\"2022-02-15T13:21:04.739331Z\",\"shell.execute_reply\":\"2022-02-15T13:21:04.938862Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.349328,\"end_time\":\"2022-02-15T13:21:04.940016\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:04.590688\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="famsize", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/88e212bbaa3acdefbac764521039c7d58ee3161f.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.1467,\"end_time\":\"2022-02-15T13:21:05.236402\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:05.089702\"}" tags="[]"}
+## Effect of Pstatus on students performance
+
+(Pstatus : parent\'s cohabitation status (binary: \"T\" : living
+together or \"A\" : apart))
+:::
+
+::: {.cell .code execution_count="22" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:05.539394Z\",\"shell.execute_reply.started\":\"2022-02-15T09:37:12.179168Z\",\"iopub.status.idle\":\"2022-02-15T13:21:05.736155Z\",\"iopub.execute_input\":\"2022-02-15T13:21:05.540099Z\",\"shell.execute_reply\":\"2022-02-15T13:21:05.735470Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.346852,\"end_time\":\"2022-02-15T13:21:05.736323\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:05.389471\"}" tags="[]"}
+``` {.python}
+sns.boxplot(data=df, x="Pstatus", y="G3");
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/1a4f0c51bbca3bbbe8d5f8beaf3794d220871e1c.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.176157,\"end_time\":\"2022-02-15T13:21:06.061809\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:05.885652\"}" tags="[]"}
+## Effect of Medu and Fedu on students performance
+
+-   Medu : mother\'s education (numeric: 0 : none, 1 : primary education
+    (4th grade), 2 : 5th to 9th grade, 3 : secondary education or 4:
+    higher education)
+-   Fedu : father\'s education (numeric: 0 : none, 1 : primary education
+    (4th grade), 2 : 5th to 9th grade, 3 : secondary education or 4 :
+    higher education)
+:::
+
+::: {.cell .code execution_count="23" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:06.370586Z\",\"shell.execute_reply.started\":\"2022-02-15T09:38:22.785831Z\",\"iopub.status.idle\":\"2022-02-15T13:21:06.889430Z\",\"iopub.execute_input\":\"2022-02-15T13:21:06.371645Z\",\"shell.execute_reply\":\"2022-02-15T13:21:06.889969Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.676481,\"end_time\":\"2022-02-15T13:21:06.890178\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:06.213697\"}" tags="[]"}
+``` {.python}
+fig, ax =plt.subplots(1,2,figsize=(20,6), dpi=80, facecolor='w', edgecolor='k')
+sns.boxplot(data=df, x="Medu", y="G3", ax=ax[0]).set_title('Mother Education Level')
+ax[0].set_xticklabels( ('none', 'primary education (4th grade)','5th to 9th grade','secondary education','higher education'),rotation='vertical' )
+ax[0].set_xlabel('mother education')
+ax[0].set_ylabel('Final Grades')
+sns.boxplot(data=df, x="Fedu", y="G3", ax=ax[1]).set_title('Father Education Level')
+ax[1].set_xticklabels( ('none', 'primary education (4th grade)','5th to 9th grade','secondary education','higher education'),rotation='vertical' )
+ax[1].set_xlabel('Father education')
+ax[1].set_ylabel('Final Grades')
+fig.suptitle('Effect of Parents Education on students performancee', fontsize=16)
+fig.show()
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/3182d8c06a68cefeb2996f70412a3f08483918c3.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.148321,\"end_time\":\"2022-02-15T13:21:07.188807\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:07.040486\"}" tags="[]"}
+## Effect of Mother and Father Job on students performance
+
+-   Mjob : mother\'s job (nominal: \"teacher\", \"health\" care related,
+    civil \"services\" (e.g. administrative or police), \"at_home\" or
+    \"other\")
+
+-   Fjob : father\'s job (nominal: \"teacher\", \"health\" care related,
+    civil \"services\" (e.g. administrative or police), \"at_home\" or
+    \"other\"
+:::
+
+::: {.cell .code execution_count="24" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:07.488820Z\",\"shell.execute_reply.started\":\"2022-02-15T09:48:58.813460Z\",\"iopub.status.idle\":\"2022-02-15T13:21:07.982067Z\",\"iopub.execute_input\":\"2022-02-15T13:21:07.489802Z\",\"shell.execute_reply\":\"2022-02-15T13:21:07.982748Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.645809,\"end_time\":\"2022-02-15T13:21:07.983018\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:07.337209\"}" tags="[]"}
+``` {.python}
+fig, ax =plt.subplots(1,2,figsize=(20,6), dpi=80, facecolor='w', edgecolor='k')
+sns.boxplot(data=df, x="Mjob", y="G3", ax=ax[0]).set_title('Mother Job Level')
+ax[0].set_xticklabels( ('teacher', 'health','services','at_home','other'),rotation='vertical' )
+ax[0].set_xlabel('Mother Job')
+ax[0].set_ylabel('Final Grades')
+sns.boxplot(data=df, x="Fjob", y="G3", ax=ax[1]).set_title('Father Job Level')
+ax[1].set_xticklabels( ('teacher', 'health','services','at_home','other'),rotation='vertical' )
+ax[1].set_xlabel('Father Job')
+ax[1].set_ylabel('Final Grades')
+fig.suptitle('Effect of Parents Job on students performancee', fontsize=16)
+fig.show()
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/5fa87209290f01b104f2d2774ac377f0d1d6cead.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.152991,\"end_time\":\"2022-02-15T13:21:08.290350\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:08.137359\"}" tags="[]"}
+## Interrelationship Between Different Grading Scheme
+:::
+
+::: {.cell .code execution_count="25" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:08.602790Z\",\"shell.execute_reply.started\":\"2022-02-15T09:52:50.826029Z\",\"iopub.status.idle\":\"2022-02-15T13:21:09.460947Z\",\"iopub.execute_input\":\"2022-02-15T13:21:08.603816Z\",\"shell.execute_reply\":\"2022-02-15T13:21:09.461453Z\"}" papermill="{\"status\":\"completed\",\"duration\":1.018101,\"end_time\":\"2022-02-15T13:21:09.461647\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:08.443546\"}" tags="[]"}
+``` {.python}
+fig, ax =plt.subplots(1,3,figsize=(20,6), dpi=80, facecolor='w', edgecolor='k')
+sns.scatterplot(data=df, x="G1", y="G3",ax=ax[0])
+sns.scatterplot(data=df, x="G2", y="G3",ax=ax[1])
+sns.scatterplot(data=df, x="G1", y="G2",ax=ax[2])
+sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
+fig.suptitle('Relationship Between Different Grade with each other', fontsize=16)
+fig.show()
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/aef854b23bfd94ada90cf256c1a125e48a731ffb.png)
+:::
+:::
+
+::: {.cell .code execution_count="26" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:09.779069Z\",\"shell.execute_reply.started\":\"2022-02-15T10:01:00.839304Z\",\"iopub.status.idle\":\"2022-02-15T13:21:09.784606Z\",\"iopub.execute_input\":\"2022-02-15T13:21:09.780055Z\",\"shell.execute_reply\":\"2022-02-15T13:21:09.784040Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.166995,\"end_time\":\"2022-02-15T13:21:09.784771\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:09.617776\"}" tags="[]"}
+``` {.python}
+sns.set_theme(style="ticks")
+```
+:::
+
+::: {.cell .code execution_count="27" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:10.100952Z\",\"shell.execute_reply.started\":\"2022-02-15T10:03:29.700850Z\",\"iopub.status.idle\":\"2022-02-15T13:21:12.101004Z\",\"iopub.execute_input\":\"2022-02-15T13:21:10.102019Z\",\"shell.execute_reply\":\"2022-02-15T13:21:12.101502Z\"}" papermill="{\"status\":\"completed\",\"duration\":2.163339,\"end_time\":\"2022-02-15T13:21:12.101696\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:09.938357\"}" tags="[]"}
+``` {.python}
+sns.jointplot(x=df['G1'], y=df['G3'], kind="hex", color="#4CB391")
+sns.jointplot(x=df['G2'], y=df['G3'], kind="hex", color="#4CB391")
+sns.jointplot(x=df['G1'], y=df['G2'], kind="hex", color="#4CB391")
+fig.show()
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/85f8b8ca69c21954b09634242a14351889478496.png)
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/d21b431ae2ff9b1da60c810277285cead0d0ba45.png)
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/3a312fa88c062e64078af01b66b021ea76446608.png)
+:::
+:::
+
+::: {.cell .code execution_count="28" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:12.418470Z\",\"shell.execute_reply.started\":\"2022-02-15T10:51:55.374561Z\",\"iopub.status.idle\":\"2022-02-15T13:21:13.054673Z\",\"iopub.execute_input\":\"2022-02-15T13:21:12.419200Z\",\"shell.execute_reply\":\"2022-02-15T13:21:13.055306Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.795739,\"end_time\":\"2022-02-15T13:21:13.055542\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:12.259803\"}" tags="[]"}
+``` {.python}
+sns.jointplot(x=df['G1'], y=df['G2'], kind="hex", color="#4CB391",bins=6)
+```
+
+::: {.output .execute_result execution_count="28"}
+    <seaborn.axisgrid.JointGrid at 0x7f02a8012b90>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/55bcda85df1daead68da99f61a75df2cb9c8c498.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.158416,\"end_time\":\"2022-02-15T13:21:13.377026\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:13.218610\"}" tags="[]"}
+:::
+
+::: {.cell .code execution_count="29" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:13.699543Z\",\"shell.execute_reply.started\":\"2022-02-15T10:34:14.229061Z\",\"iopub.status.idle\":\"2022-02-15T13:21:13.703964Z\",\"iopub.execute_input\":\"2022-02-15T13:21:13.700225Z\",\"shell.execute_reply\":\"2022-02-15T13:21:13.703319Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.168949,\"end_time\":\"2022-02-15T13:21:13.704110\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:13.535161\"}" tags="[]"}
+``` {.python}
+df.columns
+```
+
+::: {.output .execute_result execution_count="29"}
+    Index(['school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
+           'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime',
+           'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery',
+           'higher', 'internet', 'romantic', 'famrel', 'freetime', 'goout', 'Dalc',
+           'Walc', 'health', 'absences', 'G1', 'G2', 'G3'],
+          dtype='object')
+:::
+:::
+
+::: {.cell .code execution_count="30" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:14.031374Z\",\"shell.execute_reply.started\":\"2022-02-15T10:51:43.820260Z\",\"iopub.status.idle\":\"2022-02-15T13:21:14.336078Z\",\"iopub.execute_input\":\"2022-02-15T13:21:14.055211Z\",\"shell.execute_reply\":\"2022-02-15T13:21:14.335380Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.473601,\"end_time\":\"2022-02-15T13:21:14.336239\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:13.862638\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df, x="absences", y="G3",
+    bins=5, discrete=(True, False),
+    cbar=True, cbar_kws=dict(shrink=.75)
+)
+```
+
+::: {.output .execute_result execution_count="30"}
+    <AxesSubplot:xlabel='absences', ylabel='G3'>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/304bb4cab0082987f4abc030b794dd25c6ebe58e.png)
+:::
+:::
+
+::: {.cell .code execution_count="31" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:14.664881Z\",\"shell.execute_reply.started\":\"2022-02-15T10:51:13.057277Z\",\"iopub.status.idle\":\"2022-02-15T13:21:14.932281Z\",\"iopub.execute_input\":\"2022-02-15T13:21:14.665680Z\",\"shell.execute_reply\":\"2022-02-15T13:21:14.932810Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.437011,\"end_time\":\"2022-02-15T13:21:14.933037\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:14.496026\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df, x="G3", hue="sex", element="step",
+    stat="density", common_norm=False,bins=6
+)
+```
+
+::: {.output .execute_result execution_count="31"}
+    <AxesSubplot:xlabel='G3', ylabel='Density'>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/e7f496d2761ea82aff96492048d4310756cefa15.png)
+:::
+:::
+
+::: {.cell .code execution_count="32" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:15.266972Z\",\"shell.execute_reply.started\":\"2022-02-15T10:51:05.087837Z\",\"iopub.status.idle\":\"2022-02-15T13:21:15.567197Z\",\"iopub.execute_input\":\"2022-02-15T13:21:15.267991Z\",\"shell.execute_reply\":\"2022-02-15T13:21:15.566491Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.469284,\"end_time\":\"2022-02-15T13:21:15.567349\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:15.098065\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df, x="G3", hue="failures", element="step",
+    stat="density", common_norm=False,bins=6
+)
+```
+
+::: {.output .execute_result execution_count="32"}
+    <AxesSubplot:xlabel='G3', ylabel='Density'>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/3aada6be5525c9537d1b55a4563d1440ff388116.png)
+:::
+:::
+
+::: {.cell .code execution_count="33" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:15.895385Z\",\"shell.execute_reply.started\":\"2022-02-15T10:50:48.181116Z\",\"iopub.status.idle\":\"2022-02-15T13:21:16.441612Z\",\"iopub.execute_input\":\"2022-02-15T13:21:15.896387Z\",\"shell.execute_reply\":\"2022-02-15T13:21:16.442125Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.713301,\"end_time\":\"2022-02-15T13:21:16.442336\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:15.729035\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df, x="G3", hue="studytime", element="step",
+    stat="density", common_norm=False,bins=6
+)
+```
+
+::: {.output .execute_result execution_count="33"}
+    <AxesSubplot:xlabel='G3', ylabel='Density'>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/02eadc579aacc0d3d0a4efaf4c7b27a0d3a3e04e.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.164323,\"end_time\":\"2022-02-15T13:21:16.770039\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:16.605716\"}" tags="[]"}
+# Multivarate Analysis
+:::
+
+::: {.cell .code execution_count="34" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:17.137171Z\",\"shell.execute_reply.started\":\"2022-02-15T10:53:08.393353Z\",\"iopub.status.idle\":\"2022-02-15T13:21:17.396459Z\",\"iopub.execute_input\":\"2022-02-15T13:21:17.138188Z\",\"shell.execute_reply\":\"2022-02-15T13:21:17.396967Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.447309,\"end_time\":\"2022-02-15T13:21:17.397160\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:16.949851\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df,x="absences", y="address", hue="sex", legend=True,bins=10
+);
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/97ba9586e947067b319c3263af829e8ec56c80d9.png)
+:::
+:::
+
+::: {.cell .code execution_count="35" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:17.738229Z\",\"shell.execute_reply.started\":\"2022-02-15T10:52:41.502916Z\",\"iopub.status.idle\":\"2022-02-15T13:21:18.027829Z\",\"iopub.execute_input\":\"2022-02-15T13:21:17.739051Z\",\"shell.execute_reply\":\"2022-02-15T13:21:18.027309Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.46649,\"end_time\":\"2022-02-15T13:21:18.028006\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:17.561516\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df,x="absences", y="G3", hue="sex", legend=True,bins=10
+);
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/2232b71c40bb5ed9eeb1710187438aba7f1b4fcb.png)
+:::
+:::
+
+::: {.cell .code execution_count="36" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:18.366426Z\",\"shell.execute_reply.started\":\"2022-02-15T10:52:47.970303Z\",\"iopub.status.idle\":\"2022-02-15T13:21:18.663585Z\",\"iopub.execute_input\":\"2022-02-15T13:21:18.367130Z\",\"shell.execute_reply\":\"2022-02-15T13:21:18.663069Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.468404,\"end_time\":\"2022-02-15T13:21:18.663730\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:18.195326\"}" tags="[]"}
+``` {.python}
+sns.histplot(
+    df,x="absences", y="G3", hue="address", legend=True,bins=10
+);
+```
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/59c6c77bde88ed4de321ad1411fa2e1aa6588f9c.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.165045,\"end_time\":\"2022-02-15T13:21:18.993776\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:18.828731\"}" tags="[]"}
+# Correlation between different numrical varriable
+:::
+
+::: {.cell .code execution_count="37" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:19.367051Z\",\"shell.execute_reply.started\":\"2022-02-15T11:14:25.014986Z\",\"iopub.status.idle\":\"2022-02-15T13:21:19.677352Z\",\"iopub.execute_input\":\"2022-02-15T13:21:19.367922Z\",\"shell.execute_reply\":\"2022-02-15T13:21:19.678254Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.515438,\"end_time\":\"2022-02-15T13:21:19.678567\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:19.163129\"}" tags="[]"}
+``` {.python}
+print(df.corr())
+  
+# plotting correlation heatmap
+fig, ax = plt.subplots(figsize=(20,5)) 
+mask = np.triu(np.ones_like(df.corr()))
+dataplot = sns.heatmap(df.corr(), cmap="YlGnBu", annot=True,mask=mask,annot_kws={'size': 13},ax=ax)
+  
+# displaying heatmap
+plt.show()
+```
+
+::: {.output .stream .stdout}
+                   age  absences        G1        G2        G3
+    age       1.000000  0.153196 -0.124121 -0.119475 -0.125282
+    absences  0.153196  1.000000 -0.092425 -0.089332 -0.045671
+    G1       -0.124121 -0.092425  1.000000  0.858739  0.809142
+    G2       -0.119475 -0.089332  0.858739  1.000000  0.910743
+    G3       -0.125282 -0.045671  0.809142  0.910743  1.000000
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/22e99328c7f33bb908c9caa5db1045156ff149b0.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.174721,\"end_time\":\"2022-02-15T13:21:20.044445\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:19.869724\"}" tags="[]"}
+# Feature Engenering
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.167379,\"end_time\":\"2022-02-15T13:21:20.383310\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:20.215931\"}" tags="[]"}
+# Outlier removal
+:::
+
+::: {.cell .code execution_count="38" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:20.728182Z\",\"shell.execute_reply.started\":\"2022-02-15T12:02:36.215892Z\",\"iopub.status.idle\":\"2022-02-15T13:21:20.765415Z\",\"iopub.execute_input\":\"2022-02-15T13:21:20.729209Z\",\"shell.execute_reply\":\"2022-02-15T13:21:20.765896Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.215545,\"end_time\":\"2022-02-15T13:21:20.766104\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:20.550559\"}" tags="[]"}
+``` {.python}
+result = df.select_dtypes(include='number')#selecting dtypes in dataset
+
+for i in result.columns:
+    percentile25 = df[i].quantile(0.25)
+    percentile75 = df[i].quantile(0.75)
+    
+    iqr = percentile75-percentile25
+    
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+    
+    df[df[i] > upper_limit]
+    df[df[i] < lower_limit]
+    
+    df_new = df[df[i] < upper_limit ]
+    df_new = df[df[i] > lower_limit ]
+```
+:::
+
+::: {.cell .code execution_count="39" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:21.103320Z\",\"shell.execute_reply.started\":\"2022-02-15T12:02:40.835316Z\",\"iopub.status.idle\":\"2022-02-15T13:21:21.372479Z\",\"iopub.execute_input\":\"2022-02-15T13:21:21.104281Z\",\"shell.execute_reply\":\"2022-02-15T13:21:21.371765Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.439838,\"end_time\":\"2022-02-15T13:21:21.372641\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:20.932803\"}" tags="[]"}
+``` {.python}
+df_new.plot(kind='box',figsize=(20, 5))
+```
+
+::: {.output .execute_result execution_count="39"}
+    <AxesSubplot:>
+:::
+
+::: {.output .display_data}
+![](vertopal_e9c7fb8cf59c402f9c2ab479e64345d0/fa1c6b8e41e491e2cae9be91fcc757b172a034bb.png)
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.169912,\"end_time\":\"2022-02-15T13:21:21.712418\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:21.542506\"}" tags="[]"}
+## New datframe for Random Forest
+:::
+
+::: {.cell .code execution_count="40" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:22.069633Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:17.428790Z\",\"iopub.status.idle\":\"2022-02-15T13:21:22.074193Z\",\"iopub.execute_input\":\"2022-02-15T13:21:22.070637Z\",\"shell.execute_reply\":\"2022-02-15T13:21:22.074799Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.190821,\"end_time\":\"2022-02-15T13:21:22.075009\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:21.884188\"}" tags="[]"}
+``` {.python}
+df_rf=df_new.copy(deep=True)
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.169755,\"end_time\":\"2022-02-15T13:21:22.416412\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:22.246657\"}" tags="[]"}
+# 1. Linner Regression Model {#1-linner-regression-model}
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.169151,\"end_time\":\"2022-02-15T13:21:22.755420\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:22.586269\"}" tags="[]"}
+# 1. Spliting Column in Train and Test set {#1-spliting-column-in-train-and-test-set}
+:::
+
+::: {.cell .code execution_count="41" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:23.100560Z\",\"shell.execute_reply.started\":\"2022-02-15T11:43:39.238574Z\",\"iopub.status.idle\":\"2022-02-15T13:21:23.111039Z\",\"iopub.execute_input\":\"2022-02-15T13:21:23.101562Z\",\"shell.execute_reply\":\"2022-02-15T13:21:23.111634Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.186224,\"end_time\":\"2022-02-15T13:21:23.111834\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:22.925610\"}" tags="[]"}
+``` {.python}
+X_train, X_test, y_train, y_test = train_test_split(df_new.drop(columns=['G1','G3','G2','absences']), 
+                                                    df_new['G3'], 
+                                                    test_size=.2, 
+                                                    random_state=10)
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.169822,\"end_time\":\"2022-02-15T13:21:23.454171\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:23.284349\"}" tags="[]"}
+# 1. Further Divide dataframe into numerical and categorical type of train dataset {#1-further-divide-dataframe-into-numerical-and-categorical-type-of-train-dataset}
+:::
+
+::: {.cell .code execution_count="42" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:23.799741Z\",\"shell.execute_reply.started\":\"2022-02-15T11:45:13.337705Z\",\"iopub.status.idle\":\"2022-02-15T13:21:23.812385Z\",\"iopub.execute_input\":\"2022-02-15T13:21:23.800745Z\",\"shell.execute_reply\":\"2022-02-15T13:21:23.813152Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.187388,\"end_time\":\"2022-02-15T13:21:23.813357\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:23.625969\"}" tags="[]"}
+``` {.python}
+# Define categorical columns
+categorical = list(X_train.select_dtypes('category').columns)
+print(f"Categorical columns are: {categorical}")
+
+# Define numerical columns
+numerical = list(X_train.select_dtypes('number').columns)
+print(f"Numerical columns are: {numerical}")
+```
+
+::: {.output .stream .stdout}
+    Categorical columns are: ['school', 'sex', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet', 'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health']
+    Numerical columns are: ['age']
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.173363,\"end_time\":\"2022-02-15T13:21:24.156409\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:23.983046\"}" tags="[]"}
+# 1. One Hot enconding of cat dataset {#1-one-hot-enconding-of-cat-dataset}
+:::
+
+::: {.cell .code execution_count="43" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:24.500635Z\",\"shell.execute_reply.started\":\"2022-02-15T11:49:20.189315Z\",\"iopub.status.idle\":\"2022-02-15T13:21:24.504887Z\",\"iopub.execute_input\":\"2022-02-15T13:21:24.501653Z\",\"shell.execute_reply\":\"2022-02-15T13:21:24.505501Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.179018,\"end_time\":\"2022-02-15T13:21:24.505690\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:24.326672\"}" tags="[]"}
+``` {.python}
+cat_pipe = Pipeline([
+    ('encoder', OneHotEncoder(handle_unknown='ignore', sparse=False))
+])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.170418,\"end_time\":\"2022-02-15T13:21:24.846612\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:24.676194\"}" tags="[]"}
+# 1. Scaling of numerical dataset {#1-scaling-of-numerical-dataset}
+:::
+
+::: {.cell .code execution_count="44" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:25.198142Z\",\"shell.execute_reply.started\":\"2022-02-15T11:51:33.088358Z\",\"iopub.status.idle\":\"2022-02-15T13:21:25.202080Z\",\"iopub.execute_input\":\"2022-02-15T13:21:25.199105Z\",\"shell.execute_reply\":\"2022-02-15T13:21:25.202683Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.182456,\"end_time\":\"2022-02-15T13:21:25.202876\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:25.020420\"}" tags="[]"}
+``` {.python}
+from sklearn.preprocessing import Normalizer
+```
+:::
+
+::: {.cell .code execution_count="45" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:25.547750Z\",\"shell.execute_reply.started\":\"2022-02-15T11:51:36.165104Z\",\"iopub.status.idle\":\"2022-02-15T13:21:25.551888Z\",\"iopub.execute_input\":\"2022-02-15T13:21:25.548745Z\",\"shell.execute_reply\":\"2022-02-15T13:21:25.552451Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.179051,\"end_time\":\"2022-02-15T13:21:25.552643\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:25.373592\"}" tags="[]"}
+``` {.python}
+num_pipe = Pipeline([('scaler', Normalizer())])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.17163,\"end_time\":\"2022-02-15T13:21:25.896142\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:25.724512\"}" tags="[]"}
+# 1. Combining of both categorical and numerical pipeline {#1-combining-of-both-categorical-and-numerical-pipeline}
+:::
+
+::: {.cell .code execution_count="46" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:26.247300Z\",\"shell.execute_reply.started\":\"2022-02-15T11:52:32.434792Z\",\"iopub.status.idle\":\"2022-02-15T13:21:26.249363Z\",\"iopub.execute_input\":\"2022-02-15T13:21:26.248391Z\",\"shell.execute_reply\":\"2022-02-15T13:21:26.250000Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.181433,\"end_time\":\"2022-02-15T13:21:26.250194\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:26.068761\"}" tags="[]"}
+``` {.python}
+# Combine categorical and numerical pipelines
+preprocessor = ColumnTransformer([
+    ('cat', cat_pipe, categorical),
+    ('num', num_pipe, numerical)
+])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.17,\"end_time\":\"2022-02-15T13:21:26.590845\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:26.420845\"}" tags="[]"}
+# 1.Fixing Pipeline on Linner regression {#1fixing-pipeline-on-linner-regression}
+:::
+
+::: {.cell .code execution_count="47" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:26.940001Z\",\"shell.execute_reply.started\":\"2022-02-15T11:55:50.260966Z\",\"iopub.status.idle\":\"2022-02-15T13:21:27.093818Z\",\"iopub.execute_input\":\"2022-02-15T13:21:26.940704Z\",\"shell.execute_reply\":\"2022-02-15T13:21:27.094716Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.333466,\"end_time\":\"2022-02-15T13:21:27.095049\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:26.761583\"}" tags="[]"}
+``` {.python}
+pipe = Pipeline([
+    ('preprocessor', preprocessor),
+    ('model', LinearRegression())
+])
+
+pipe.fit(X_train, y_train)
+```
+
+::: {.output .execute_result execution_count="47"}
+    Pipeline(steps=[('preprocessor',
+                     ColumnTransformer(transformers=[('cat',
+                                                      Pipeline(steps=[('encoder',
+                                                                       OneHotEncoder(handle_unknown='ignore',
+                                                                                     sparse=False))]),
+                                                      ['school', 'sex', 'address',
+                                                       'famsize', 'Pstatus', 'Medu',
+                                                       'Fedu', 'Mjob', 'Fjob',
+                                                       'reason', 'guardian',
+                                                       'traveltime', 'studytime',
+                                                       'failures', 'schoolsup',
+                                                       'famsup', 'paid',
+                                                       'activities', 'nursery',
+                                                       'higher', 'internet',
+                                                       'romantic', 'famrel',
+                                                       'freetime', 'goout', 'Dalc',
+                                                       'Walc', 'health']),
+                                                     ('num',
+                                                      Pipeline(steps=[('scaler',
+                                                                       Normalizer())]),
+                                                      ['age'])])),
+                    ('model', LinearRegression())])
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.170532,\"end_time\":\"2022-02-15T13:21:27.439734\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:27.269202\"}" tags="[]"}
+# 1. Predict training data {#1-predict-training-data}
+:::
+
+::: {.cell .code execution_count="48" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:27.791842Z\",\"shell.execute_reply.started\":\"2022-02-15T11:55:58.862535Z\",\"iopub.status.idle\":\"2022-02-15T13:21:27.833985Z\",\"iopub.execute_input\":\"2022-02-15T13:21:27.792531Z\",\"shell.execute_reply\":\"2022-02-15T13:21:27.835686Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.223488,\"end_time\":\"2022-02-15T13:21:27.836118\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:27.612630\"}" tags="[]"}
+``` {.python}
+y_train_pred = pipe.predict(X_train)
+print(f"Predictions on training data: {y_train_pred}")
+```
+
+::: {.output .stream .stdout}
+    Predictions on training data: [11.5   13.    12.25  11.875 11.375  8.125 13.625  9.375 14.375 12.375
+     13.25  12.    13.    13.25  15.625 11.875  9.125 12.    12.25  13.125
+     10.625 10.25  13.125 13.25  13.75  12.5    9.75  11.    10.125  8.125
+     11.375 11.25  14.    12.75   9.875 14.75  14.5   13.625 14.375 10.75
+     13.875 10.625 13.25  12.375 11.875 11.625  8.5   12.625  5.375 13.5
+     12.25   8.875 13.375 12.375  9.75  14.    14.375 13.5   10.875 14.625
+     10.875 13.5   10.25  12.25  13.    12.25  12.875 11.75  14.875  9.25
+     10.5   12.875  8.375  9.5   13.375 13.25  10.25  11.375  9.125 12.625
+     10.125 11.125 10.625 13.625 13.25   8.625 11.    14.125 14.375 12.625
+     12.875 10.5   13.125 12.625 13.25  12.875 14.25   9.125  5.375 15.125
+     14.125 12.5   14.125 12.5   12.5   10.625 15.125 12.625 12.5   10.5
+     13.375 12.125 11.375 13.    10.5   11.    12.125 11.375 13.125 13.75
+     12.625 11.125 12.375 10.625 14.125  9.125 10.    12.625 12.125 12.75
+     14.125 12.5   14.    11.875 12.875 14.5   12.125 11.625 10.625 12.375
+     12.75  11.875 11.125 12.75  12.75   9.25  16.25  13.25  14.625 12.375
+     10.375 13.75  14.125 13.125 12.875 16.25  15.875 10.25  12.375 12.5
+      7.375 12.    12.625 11.5   10.875 11.875 13.875 10.    10.75   5.375
+     13.75  14.375 13.75  12.125 10.625 13.5   13.625 13.625 12.125 15.875
+     10.25  15.    12.75  11.125 14.125 11.5   10.625 12.375 13.375 13.75
+     10.625 10.625 10.625 11.125 13.125 13.5   11.875 15.625 10.875 12.625
+     14.     9.5    8.125 11.25  13.25  10.875 14.625 10.5   15.625 11.125
+     11.875 11.875 11.875 16.125 13.    13.25  13.375 11.5   11.875 10.25
+      6.375 11.625 13.625 11.625  9.875 10.875 12.875 13.25  10.375 13.125
+     13.875 13.25  10.125 11.625 13.375 10.375 12.375 14.125 13.25  12.5
+     11.375 11.875  8.125 12.25   7.625 10.125 12.375 14.    14.375 12.25
+     11.625 10.625 10.    13.375  8.625 14.5   13.625 11.625 10.25  11.
+     11.375  9.75  12.125 12.875 15.375 13.5   10.875 14.5   14.875  9.25
+     12.375 12.75  14.125 12.75  13.125 13.125 13.875 12.625 11.875  8.625
+     11.625 15.25  13.875 16.125  9.625 12.375 11.625 12.375 13.125 13.625
+     10.125 13.625 12.375 12.875 13.25  13.375 13.125 12.75  12.625 12.
+     12.5   11.125 11.625 12.75  12.625 11.25  12.625 13.125 11.375 12.25
+     13.125 10.625 13.375 13.125 12.5    9.625 12.375 12.375 13.625 12.125
+     10.25   9.125 11.625 13.375 12.375 11.    10.25  12.875 14.125 10.75
+     13.125 12.25  10.875 11.625  8.     8.875  9.125 11.625 13.875 12.125
+     14.    13.375  8.125 13.75  13.375 14.5   14.625 10.625 12.625 12.875
+      9.    11.375 14.75  11.25   9.875 11.125 14.75  14.375 14.25  13.625
+      9.5   13.625 11.25  10.375 10.5   15.    11.875 12.25  11.875 11.125
+     13.625 12.625 11.75  11.5   10.875  8.625 12.125 13.375 13.125  9.125
+     12.875 13.375 10.125 10.25  12.25  10.875  8.375 12.5   11.625 12.625
+     12.375 12.5   11.625 12.75  11.625 12.75  12.     9.125 11.75  10.5
+     12.375 13.625 10.125 13.125 12.375  8.375  6.25  12.    15.375 14.125
+      8.625 13.875 14.125 11.125 12.875 11.     9.375 11.375 13.125 14.375
+      8.375 12.875 12.875 11.625 13.625 12.875 13.125 13.125 13.375 12.25
+     10.625  7.5   10.    12.625 11.75  13.25  13.125 13.25  10.625  7.25
+      7.5   14.125 13.375 11.375 12.625 11.75  12.125 12.375 11.875  9.875
+     12.125 12.875 11.    11.125 12.625 15.25  14.    11.875 11.875 11.25
+      9.625 12.125  8.5   15.    10.375 11.75  13.25  12.375 11.375 11.625
+     11.     9.75  11.625 13.5   12.25  10.375 12.625 14.25  11.625 13.
+     12.625 13.75  12.25  12.875 10.25  13.375 13.625 12.625 11.375 13.125
+     12.    13.125 12.375 12.875 12.625 13.875 12.75  11.5   12.125 13.75
+     14.375 12.25   9.75  13.    11.125 15.875 13.125  9.375 12.25   9.375
+      9.375 10.75  12.5   12.875 10.375 10.125 10.875 12.5   13.125 13.5
+     12.375  9.625 12.875 14.75   9.625 14.625 14.125 13.125 10.875 12.375
+     14.125 14.625 11.    12.125 12.125  8.5   10.875  9.875 10.125 11.25
+     12.625 11.125 12.125 11.375 12.375 13.375 12.125  5.375  9.625 14.5
+     11.625 12.625 11.875 10.875 15.125 11.875 10.125 11.125 12.875 13.
+     10.125  9.375 11.875 11.125 12.125 12.5   11.375 11.875 12.375  8.375
+     14.625 12.875 11.625 12.875 12.375 11.375 13.375 14.125 10.25  14.625
+      9.25   9.625  8.125 13.25  12.625 12.    13.25  12.25  13.625 13.125
+     12.625 14.375 12.    13.375 12.125 13.25  10.5   15.125 12.125 10.625
+     10.625 13.375 12.125 12.5   13.625  9.125 11.75  13.    13.125 11.875
+     11.875 11.5    9.875 13.625 14.125 13.75  10.5   10.875 11.125 11.5
+     11.875 13.125 12.25  12.75  10.25  12.5   12.375  9.375 13.125 10.
+     11.375 10.5   14.125 11.625 11.625 14.5   12.25  12.625  9.125 14.75
+     10.125 10.375 12.875 12.875 12.375 13.875 12.25  13.    11.375 13.25
+     12.375 14.5    9.875 14.5   14.25   8.25  12.625 10.875 12.    12.625
+     13.125 12.125 13.625 13.5   11.125 10.375 11.625 13.375 14.5   12.125
+     13.375 13.25  12.5    9.125 11.375 14.625 13.5   13.125 11.125  9.875
+     12.25   9.125 12.25  12.375 11.75  12.5   13.    10.875 12.125  8.875
+     13.375 13.25  12.875 10.75  13.625 13.375 11.875 12.875 12.375 12.75
+     11.625 14.    14.875  9.875 11.875  8.25  11.    11.875  8.375  9.125
+     14.375 13.375 10.125 10.25  16.125 12.5   13.125 12.75   9.25  14.375
+      8.875 13.125 13.625 13.    11.625 13.375 12.75  14.875 12.625  8.375
+     13.375  8.375 10.125 13.     7.25  13.25  10.375 13.125 10.125 12.375
+     11.625 12.375 12.125 11.25  14.625 14.125 13.75   8.75  11.625 11.375
+      9.75  12.5    9.25  12.375 11.25  11.5   12.625 12.    14.625 15.625
+      8.375 13.125 12.875 14.125 12.25  11.125 13.125 10.75  10.    14.375
+     11.     8.25  12.75  10.75   9.25  10.375 11.375 12.625 12.625 14.
+     11.375 11.5   11.25  10.5   12.25  11.625 12.25  11.625 10.75  10.5
+     13.75 ]
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.170653,\"end_time\":\"2022-02-15T13:21:28.257364\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:28.086711\"}" tags="[]"}
+# 1.Predict test data {#1predict-test-data}
+:::
+
+::: {.cell .code execution_count="49" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:28.701565Z\",\"shell.execute_reply.started\":\"2022-02-15T11:56:39.167197Z\",\"iopub.status.idle\":\"2022-02-15T13:21:28.731198Z\",\"iopub.execute_input\":\"2022-02-15T13:21:28.702285Z\",\"shell.execute_reply\":\"2022-02-15T13:21:28.732287Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.209235,\"end_time\":\"2022-02-15T13:21:28.732785\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:28.523550\"}" tags="[]"}
+``` {.python}
+y_test_pred = pipe.predict(X_test)
+print(f"Predictions on test data: {y_test_pred}")
+```
+
+::: {.output .stream .stdout}
+    Predictions on test data: [11.125 12.25  14.125 13.625 13.5   12.625 13.625 10.125 13.875 15.5
+     11.5   13.125 14.625 13.    12.5   10.375 12.75  11.375 13.    10.75
+     12.625  8.5   13.375 13.875 13.75  10.375 10.875 12.25  12.625 14.
+     12.5   12.625 11.5    9.875 10.5   10.25  11.75   9.75  14.875 12.625
+     12.875 12.75   8.375 11.75  12.    14.75  13.625  8.625 12.125 11.625
+     13.875 13.125  6.875 12.5   14.625 11.125 11.375 12.625 14.125 14.375
+     13.375 13.875 12.375 13.25  11.625 14.625 11.625  9.5   11.875 12.5
+     11.    13.75  11.75  11.875 10.625  9.375 13.75  12.875 11.875 13.375
+      8.75  13.     9.5   10.125 12.375 13.625 10.375 11.125 12.    14.5
+     12.625 10.375 12.75  10.25  10.75  11.375 13.625 14.875 11.25  12.5
+      8.375 12.625 11.875 11.875 13.875 11.875 13.625 13.375 12.625 13.875
+     10.375 13.5   12.5   10.25  12.5   11.625 10.125 12.5   10.75  12.5
+     13.375 10.375 14.5   11.375 15.625 13.75  13.375 12.125 12.375 13.875
+     10.     8.625  8.75  12.375 10.25  11.25  14.     7.5   14.    10.375
+      7.625 12.    12.375 12.    11.75  10.875 10.375  8.125 14.25  11.75
+     12.    13.625 11.75  12.875 12.25   9.625 13.125 10.375 12.875 11.625
+     11.75  11.25  13.875 11.125 14.125 10.625  9.875 11.875 11.5   11.625
+     12.875 12.625 12.    11.125 12.75  13.375  8.875 11.25   9.375 14.5
+     13.    13.875 12.125 12.375 11.125 10.25  15.    10.125  9.125  7.625
+     11.625 13.125 11.125 10.875 14.75  13.5    8.     9.875]
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.174361,\"end_time\":\"2022-02-15T13:21:29.130181\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:28.955820\"}" tags="[]"}
+# 1.Check r square value {#1check-r-square-value}
+:::
+
+::: {.cell .code execution_count="50" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:29.490689Z\",\"shell.execute_reply.started\":\"2022-02-15T11:57:54.524628Z\",\"iopub.status.idle\":\"2022-02-15T13:21:29.494356Z\",\"iopub.execute_input\":\"2022-02-15T13:21:29.491426Z\",\"shell.execute_reply\":\"2022-02-15T13:21:29.493703Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.183997,\"end_time\":\"2022-02-15T13:21:29.494510\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:29.310513\"}" tags="[]"}
+``` {.python}
+r2 = r2_score(y_test, y_test_pred)
+print('r2 score for a  model is', r2)
+```
+
+::: {.output .stream .stdout}
+    r2 score for a  model is 0.1858811433534281
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.17361,\"end_time\":\"2022-02-15T13:21:29.847459\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:29.673849\"}" tags="[]"}
+# 2. Fitting Random Forest {#2-fitting-random-forest}
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.181744,\"end_time\":\"2022-02-15T13:21:30.206718\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:30.024974\"}" tags="[]"}
+# 2. Spliting dataset in Train and Test set {#2-spliting-dataset-in-train-and-test-set}
+:::
+
+::: {.cell .code execution_count="51" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:30.565340Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:28.935746Z\",\"iopub.status.idle\":\"2022-02-15T13:21:30.571933Z\",\"iopub.execute_input\":\"2022-02-15T13:21:30.566032Z\",\"shell.execute_reply\":\"2022-02-15T13:21:30.571381Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.188118,\"end_time\":\"2022-02-15T13:21:30.572087\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:30.383969\"}" tags="[]"}
+``` {.python}
+X_train_n, X_test_n, y_train_n, y_test_n = train_test_split(df_rf.drop(columns=['G1','G3','G2', 'address', 
+                                                                                'famsize', 'guardian', 'traveltime','absences','romantic']), 
+                                                    df_rf['G3'], 
+                                                    test_size=.2, 
+                                                    random_state=10)
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.174792,\"end_time\":\"2022-02-15T13:21:30.919325\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:30.744533\"}" tags="[]"}
+# 2. Define categorical columns {#2-define-categorical-columns}
+:::
+
+::: {.cell .code execution_count="52" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:31.270669Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:33.690358Z\",\"iopub.status.idle\":\"2022-02-15T13:21:31.279179Z\",\"iopub.execute_input\":\"2022-02-15T13:21:31.271364Z\",\"shell.execute_reply\":\"2022-02-15T13:21:31.279694Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.186504,\"end_time\":\"2022-02-15T13:21:31.279898\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:31.093394\"}" tags="[]"}
+``` {.python}
+categorical_n = list(X_train_n.select_dtypes('category').columns)
+print(f"Categorical columns are: {categorical_n}")
+```
+
+::: {.output .stream .stdout}
+    Categorical columns are: ['school', 'sex', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health']
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.175821,\"end_time\":\"2022-02-15T13:21:31.629090\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:31.453269\"}" tags="[]"}
+# 2. Define numerical columns {#2-define-numerical-columns}
+:::
+
+::: {.cell .code execution_count="53" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:31.985810Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:37.847111Z\",\"iopub.status.idle\":\"2022-02-15T13:21:31.993503Z\",\"iopub.execute_input\":\"2022-02-15T13:21:31.986502Z\",\"shell.execute_reply\":\"2022-02-15T13:21:31.994024Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.191421,\"end_time\":\"2022-02-15T13:21:31.994229\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:31.802808\"}" tags="[]"}
+``` {.python}
+numerical_n = list(X_train_n.select_dtypes('number').columns)
+print(f"Numerical columns are: {numerical_n}")
+```
+
+::: {.output .stream .stdout}
+    Numerical columns are: ['age']
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.177259,\"end_time\":\"2022-02-15T13:21:32.347476\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:32.170217\"}" tags="[]"}
+# 2. OHE encoding {#2-ohe-encoding}
+:::
+
+::: {.cell .code execution_count="54" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:32.703657Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:42.090883Z\",\"iopub.status.idle\":\"2022-02-15T13:21:32.705768Z\",\"iopub.execute_input\":\"2022-02-15T13:21:32.704400Z\",\"shell.execute_reply\":\"2022-02-15T13:21:32.705206Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.183241,\"end_time\":\"2022-02-15T13:21:32.705940\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:32.522699\"}" tags="[]"}
+``` {.python}
+cat_pipe_n = Pipeline([
+    ('encoder', OneHotEncoder(handle_unknown='ignore', sparse=False))
+])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.174538,\"end_time\":\"2022-02-15T13:21:33.055700\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:32.881162\"}" tags="[]"}
+# 2. Normelization {#2-normelization}
+:::
+
+::: {.cell .code execution_count="55" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:33.408543Z\",\"shell.execute_reply.started\":\"2022-02-15T12:31:46.479289Z\",\"iopub.status.idle\":\"2022-02-15T13:21:33.411865Z\",\"iopub.execute_input\":\"2022-02-15T13:21:33.409286Z\",\"shell.execute_reply\":\"2022-02-15T13:21:33.412397Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.180761,\"end_time\":\"2022-02-15T13:21:33.412597\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:33.231836\"}" tags="[]"}
+``` {.python}
+num_pipe_n = Pipeline([('scaler', Normalizer())])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.173555,\"end_time\":\"2022-02-15T13:21:33.761584\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:33.588029\"}" tags="[]"}
+# 2. Combine categorical and numerical pipelines {#2-combine-categorical-and-numerical-pipelines}
+:::
+
+::: {.cell .code execution_count="56" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:34.117970Z\",\"shell.execute_reply.started\":\"2022-02-15T12:32:06.016533Z\",\"iopub.status.idle\":\"2022-02-15T13:21:34.121798Z\",\"iopub.execute_input\":\"2022-02-15T13:21:34.118606Z\",\"shell.execute_reply\":\"2022-02-15T13:21:34.122318Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.184616,\"end_time\":\"2022-02-15T13:21:34.122504\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:33.937888\"}" tags="[]"}
+``` {.python}
+preprocessor_n = ColumnTransformer([
+    ('cat', cat_pipe_n, categorical_n),
+    ('num', num_pipe_n, numerical_n)
+])
+```
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.175934,\"end_time\":\"2022-02-15T13:21:34.472612\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:34.296678\"}" tags="[]"}
+# 2. Fit a pipeline with transformers and an estimator to the training data {#2-fit-a-pipeline-with-transformers-and-an-estimator-to-the-training-data}
+:::
+
+::: {.cell .code execution_count="57" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:34.828755Z\",\"shell.execute_reply.started\":\"2022-02-15T12:32:10.772608Z\",\"iopub.status.idle\":\"2022-02-15T13:21:35.463020Z\",\"iopub.execute_input\":\"2022-02-15T13:21:34.833861Z\",\"shell.execute_reply\":\"2022-02-15T13:21:35.463537Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.815233,\"end_time\":\"2022-02-15T13:21:35.463739\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:34.648506\"}" tags="[]"}
+``` {.python}
+pipe_n = Pipeline([
+    ('preprocessor', preprocessor_n),
+    ('model', RandomForestRegressor(max_depth=10, random_state=8))])
+pipe_n.fit(X_train_n, y_train_n)
+```
+
+::: {.output .execute_result execution_count="57"}
+    Pipeline(steps=[('preprocessor',
+                     ColumnTransformer(transformers=[('cat',
+                                                      Pipeline(steps=[('encoder',
+                                                                       OneHotEncoder(handle_unknown='ignore',
+                                                                                     sparse=False))]),
+                                                      ['school', 'sex', 'Pstatus',
+                                                       'Medu', 'Fedu', 'Mjob',
+                                                       'Fjob', 'reason',
+                                                       'studytime', 'failures',
+                                                       'schoolsup', 'famsup',
+                                                       'paid', 'activities',
+                                                       'nursery', 'higher',
+                                                       'internet', 'famrel',
+                                                       'freetime', 'goout', 'Dalc',
+                                                       'Walc', 'health']),
+                                                     ('num',
+                                                      Pipeline(steps=[('scaler',
+                                                                       Normalizer())]),
+                                                      ['age'])])),
+                    ('model', RandomForestRegressor(max_depth=10, random_state=8))])
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.176024,\"end_time\":\"2022-02-15T13:21:35.819092\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:35.643068\"}" tags="[]"}
+# 2.Predict training data {#2predict-training-data}
+:::
+
+::: {.cell .code execution_count="58" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:36.174872Z\",\"shell.execute_reply.started\":\"2022-02-15T12:32:16.222461Z\",\"iopub.status.idle\":\"2022-02-15T13:21:36.219331Z\",\"iopub.execute_input\":\"2022-02-15T13:21:36.178789Z\",\"shell.execute_reply\":\"2022-02-15T13:21:36.220081Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.225079,\"end_time\":\"2022-02-15T13:21:36.220344\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:35.995265\"}" tags="[]"}
+``` {.python}
+y_train_pred_n = pipe_n.predict(X_train_n)
+print(f"Predictions on training data: {y_train_pred_n}")
+```
+
+::: {.output .stream .stdout}
+    Predictions on training data: [11.44844442 12.16866218 12.3420182  12.93995774 10.99796344 11.04163345
+     14.09874619  9.76070324 14.55417281 11.96607762 12.547614   11.02500301
+     13.27098187 11.0857898  14.97112435 12.84551826 11.6567909  11.91279278
+     10.37753733 11.5646508  11.44402564 10.9279058  12.28455033 12.84575118
+     12.94740878 13.14159128  8.94143666  9.49830952  9.19117982  8.52272159
+     11.76688513  8.85880016 14.0670276  13.30128102  9.14173351 14.20085097
+     13.63533876 11.17499363 14.7574938  11.44734993 12.21202    10.12655786
+     12.26094055 13.30103164 12.51942045 12.35997513  9.50602937 11.8852619
+      7.76947803 14.70611332  9.12566756  8.27342885 12.79876866 11.56595207
+      8.54253996 14.11741437 14.78788117 14.3531602  12.11029094 15.69104125
+     10.36852749 10.36075989  8.24117688 12.34577824 13.93697299 11.74644434
+     10.47334099 10.12844838 14.51983132  6.71217172 12.48743399 12.7105752
+     11.41250669 10.24281644 12.09880939 11.42226789  8.24117688 11.79021941
+      7.11945238 11.99814764 10.8753111  10.27088297 12.72996429 13.44836087
+     12.73734814  8.8861205  12.13299995 15.10605422 14.49659299  9.91615417
+     12.46554841 10.21196312 14.65544598 15.35336318 13.69453495 13.69276962
+     14.59712163  9.23353978 10.06410624 14.72071609 13.92700092 12.32683908
+     13.16649879 11.19047194 11.81279626 12.22070442 13.2843893  12.09144086
+     11.00533729  8.40088665 13.05413902 11.91550044 12.13178785 12.96552472
+     11.25265694  9.95103179 13.57074963  9.73575201 13.28133616 14.53367887
+     11.95977611  9.86401601 12.34667681 11.87040764 13.92700092  9.94140732
+     11.0052127  13.39481557 12.76216629 13.17079036 14.41984571 11.36280443
+     12.68964438 11.08151746 12.84978079 13.53610519 12.43019832 12.12137665
+     11.18661049 12.34667681 13.15173103 11.26694663 10.70250589 13.65468386
+     11.99596773 11.20391821 16.86157704 13.26715083 13.86752866 11.77621439
+     10.26734729 11.75155756 10.48157198 13.62795055 10.43666074 16.86157704
+     16.44483745 11.51072496 11.67599567 13.53961239  9.5456458  11.93831033
+     10.46462275 12.75323534 10.13676911 12.3138337  13.72804685 11.57788889
+      9.11042208  7.76947803 14.34885815 14.7574938  14.26601819 10.68419057
+      9.20512084 13.63070253 13.09545143 14.05978617 11.97412741 12.06533889
+      9.69958538 16.65773564 14.43065797 11.64612785 14.51370479 12.77255401
+     11.3287692  14.48150011 15.29183631 14.53367887 11.39674719 10.11238726
+     10.84113035 11.70173333 12.56435607 14.3531602  12.29789316 13.53363054
+     13.51764899 12.48515847 13.63754432 10.92244164  8.1535971  13.16447565
+     14.18799702 10.26575398 15.4639411  10.58288264 13.44430035 10.60169075
+     11.71600175 10.61691613 11.83604758 16.30121164 12.87702275 13.43838086
+     12.52595905 11.6651837  12.90412139 10.63980269  6.42561709 12.28572379
+     12.70906016  9.10491667  9.93328595 10.3729636  10.67264161 11.72214038
+     10.75708006 12.94011063 13.9822115  14.58871674 10.20154329 10.55311496
+     12.09880939  8.77025138 11.8057307  11.39357026 12.16165978 12.11717532
+     13.01808007 11.40348547  9.93565196 12.54622941  8.82405904  8.91172156
+     12.06575371 12.68964438 12.74697539 11.53856905 12.94986543 10.99875182
+     10.34619679 13.2589546  10.1961859  13.29636539 12.70906016 12.0006785
+     11.51072496  8.68295022 12.35095235  9.99216452 12.02643201 14.83134135
+     15.72788597 14.72296464 10.54352337 14.10076579 14.53311583  8.74058605
+     12.24917044 12.85187884 14.18015524 12.182541   12.56435607 12.33001227
+     13.557347   12.38506086 11.79193962 10.54694495 10.4897656  14.69482735
+     13.0948024  16.30121164 10.58649536 14.48150011 10.76346728 11.89527352
+     11.71801248 13.03945208  8.17847373 13.82173465 11.80954964 12.75768925
+     13.43838086 13.09787345 13.62795055 13.36965601 12.08816587 11.91957627
+     12.27984524 10.90703003 11.10404871 12.85474929 12.00017697 12.21422527
+     10.20290597 14.79909792 11.2780235  11.74644434 13.72361947 11.32963764
+     12.78649717 13.73471725 11.77889541  9.56515353 11.89527352 14.32072354
+     13.97962341 12.76216629  9.68474729  9.37976113 11.05407907 13.44440436
+     12.21740592 11.02041718 10.04824196 13.4889822  15.36255809 11.85757686
+     12.80670987 13.08153345 11.15698363 11.72870255 10.75577571 11.19495241
+     10.09637003 10.76346728 14.41050847 11.81273116 14.12964183 14.50482021
+      9.6851136  14.9664447  13.05413902 13.80049561 13.88794197 10.94444254
+     13.00083598 11.9851342   9.34707646 11.9514836  14.48778648 12.21422527
+     10.6191449  10.68579716 14.20306731 16.25926932 14.59712163 14.41399543
+      9.53872927 11.93669237 10.48256451 11.80263636 10.23949293 13.91037747
+      8.83630302 10.77369771 11.68712156 11.16315417 13.13834475 13.95230386
+     12.61263181 11.80492109 10.31275267  7.77855043 11.35642754 12.03839206
+     11.51393935  8.64123773 12.69298936 12.62635465 11.27993951  9.72222222
+     13.08153345 10.44493758  9.50483148 10.42122237 13.07802354 11.48889829
+     11.03376208 13.56781679 10.83942625 12.91013986 12.35530831  8.68263173
+     12.0203227   9.44542151 12.70073642 10.6777593  11.82072981 12.67641807
+     10.48760769 12.97370224 10.25991017  8.86001164  7.92878097 10.40207787
+     15.72788597 12.96364119  9.40588217 12.21202    13.34802683 10.61590094
+     11.7245228  12.13110473  9.47835589 11.5580125  12.42015879 16.25926932
+      9.51200987 13.9794258  11.19115603 11.43304135 14.40851428 13.45306628
+     12.99014631 11.83287635 15.29183631 11.26483113 10.21530315  8.5936242
+     10.16469599  9.82878748 11.82265758 13.26715083 13.31040151 14.54767244
+     11.44402564  9.09298209  9.17295671 13.38473234 12.87721274 11.98874308
+      9.91615417  9.4816378  11.63120603 13.73086286 11.67599373  9.06347258
+     12.3260181  13.9794258   8.96124315 11.80519445 13.64879095 14.58433962
+     14.3278509  11.40050698 12.29789316  8.9744281   8.71917752 14.07937722
+      9.41806786 14.64505937  9.89039277 11.66036779 12.12120318 14.67740601
+     12.02647746 11.77330499  9.11631417  9.7763842  10.74084428 15.69394297
+     13.51217752 10.95386026 11.75714209 15.13533331 11.4193926  14.09417606
+     12.16876029 14.9664447  12.34577824 14.89256148 11.4309465  12.26657297
+     12.81568396 13.56252517 11.91246688 12.55475037 14.54826859 12.99662695
+     14.27815921 13.84082038 13.77138887 14.07959418 12.84334477 10.64894776
+     12.8857783  14.26601819 14.49659299 10.23851701  8.81617236 11.57320009
+     12.23905673 12.06533889 12.82124423  8.68759091 12.58334481  8.55369191
+      9.26079429  9.45632259 11.00533729 14.05177216 10.12953214 11.52830303
+     10.25038009 12.87691861 12.33001227 14.2897219  12.54376339  9.56515353
+     13.04874698 14.20085097 10.4177322  15.21197115 14.74096261 13.28133616
+     10.78293354 11.52725419 15.36255809 12.74926248  8.93586616 13.02956245
+     11.58239944 10.47523485 10.83982732 10.81862993 11.98667074 12.2068172
+     12.0357346  11.08312685 13.38102225 11.95812264 12.06575371 12.52595905
+     12.51490527 10.06410624  6.58090909 14.090871   11.70999729 12.42694103
+     10.76606627 11.70779932 14.72071609 11.83604758 11.42704201 12.06151515
+     15.47566332 13.4416946  10.00204853 11.91865848 12.67710702 11.40273698
+     11.91550044 11.74099773 11.2935203  12.170419   11.57250834  9.93903913
+     13.86752866 13.4889822  11.28648338 13.61575326 15.6875     11.22952687
+     14.75077017 14.74096261 11.09519408 14.34963339 10.49922365  7.61986612
+      8.08725    12.12120318 12.71683802 11.25617725 11.84178152 11.53980487
+     15.08749475 12.30672903 12.79093848 14.85967991 12.895032   12.53246457
+     11.00665192 12.94814156  9.93972669 14.67641101 13.64784018 11.28062211
+     12.2737616  13.97280841 12.51490527 11.24340661 11.76052316  9.64094914
+     12.06417058 12.41086524 13.07800094 11.23845527 12.170419    9.97809646
+      9.75382708 14.05978617 11.39357026 12.96850863 10.29313123  8.29902729
+     11.80519445 12.20740845 11.68712156 12.16470416 12.16601422 12.79458608
+     11.03740967 10.54602361 10.11105201  9.94098096 12.30517881  7.81200135
+     10.08626208 10.58288264 15.02822962 12.35530831 10.6967465  14.22331296
+     10.77369771 11.89183232 11.93551633 15.94789628 10.20154329 10.96411972
+     13.23164819 12.20266667 12.68381503 13.70103912 10.5479322  11.57320009
+      8.30188221 14.18799702  8.69952738 13.53610519  8.94273124 13.29636539
+     13.26951749 10.80207359 14.03476587 10.0668931  11.72866236 10.20290597
+     13.1280351  12.8857783  11.87254479 15.64320394 13.06625    11.06140424
+     11.60720929 12.30785449 15.40301091 12.02643201 12.75959149 13.93721937
+     11.42785152 15.6620287   8.20287211 13.88813407 13.98424415 12.87763603
+     11.46404429  9.14173351 11.28234352  9.56755751 11.53856905  8.69952738
+     10.12844838 12.3202287  14.09417606 11.12207316 13.46133043  8.27342885
+     12.71243837 13.20298406 13.23164819 11.04914088 12.32303898 12.91635598
+     12.43675983 10.67264161 12.04441528 12.25926815 11.24336446 14.11741437
+     16.09020047  8.38729925 12.82856812  8.68573792 10.01706301 11.41654998
+     10.32821752 10.09637003 14.78788117 11.85190027 11.71407081 11.4309465
+     15.7788394  11.77889541 12.86012312 11.99596773 11.3045892  12.07664278
+      9.69403428 13.95450242 11.76052316 13.06753267 12.13028275 11.0687655
+     14.29698732 14.51983132 12.43708321 10.51365091 15.25556187  9.93903913
+     11.82526316 13.10427059  8.63832665 12.78896807 11.1763168  12.02926162
+     11.12810414 11.55120245 11.67471001 13.84120466 11.40262947 12.2068172
+     12.53823939 10.48157198 14.23739598 10.39183017 13.74341087 11.27504959
+     11.79453365 12.26479634 11.96991693 12.96181381 11.3956375  11.65457147
+     12.11036836 12.92371773 15.77371688 15.22885628 10.66202814 11.8970753
+     10.43666074 12.3229987  12.71849639  9.86401601 13.44718231 12.20927972
+     11.98069908 12.07664278  8.93586616  9.32768126 14.29698732 11.6883474
+      9.43478141 10.52568438 11.9514836  14.01849982 13.20440463 15.66263211
+     11.91806122 11.37744919 11.29388244 11.86202767 11.3814974  12.94986543
+     12.71226871 11.10404871  9.60009178 10.6777593  15.05555066]
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.17459,\"end_time\":\"2022-02-15T13:21:36.570534\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:36.395944\"}" tags="[]"}
+# 2. Predict test data {#2-predict-test-data}
+:::
+
+::: {.cell .code execution_count="59" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:36.929510Z\",\"shell.execute_reply.started\":\"2022-02-15T12:32:22.386891Z\",\"iopub.status.idle\":\"2022-02-15T13:21:36.956893Z\",\"iopub.execute_input\":\"2022-02-15T13:21:36.930544Z\",\"shell.execute_reply\":\"2022-02-15T13:21:36.957422Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.210555,\"end_time\":\"2022-02-15T13:21:36.957615\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:36.747060\"}" tags="[]"}
+``` {.python}
+y_test_pred_n = pipe_n.predict(X_test_n)
+print(f"Predictions on test data: {y_test_pred_n}")
+```
+
+::: {.output .stream .stdout}
+    Predictions on test data: [10.90870297 12.3420182  14.51370479 13.82173465 15.64320394  9.91212771
+     12.81568396 10.07305675 13.59630385 13.53363054 11.07353207 13.06950638
+     13.11528589 13.86613376 11.81279626 12.33886596 13.15173103  8.90437474
+     13.32775687 11.6883474  12.5893661   9.89536546 12.63318293 13.85851754
+     14.23610143  9.1649641  11.91538736 12.80420659 12.08816587 12.85001575
+     10.62324486 12.2808339  11.4760078  10.7474878  11.86202767 11.75387311
+      9.37844102 10.89690941 14.72665504 13.69485743 12.52515668 11.31133958
+      9.90846126 12.40869514 12.92371773 13.2470388  13.13834475  6.60090909
+     13.00035503 10.25117857 13.72804685 12.95702431  9.11855123 12.86346247
+     15.21197115 11.67251276 11.5580125  12.8122281  13.99498383 14.63337846
+     13.57437164 15.06371564 12.9142178  12.14663972 13.67462144 13.88813407
+     12.50461981 10.50973784 12.2553106  12.32683908  9.33101218 14.27495727
+     12.16006806 11.89465855 10.12655786  9.80640922 12.99266243 11.13064124
+     10.76606627 12.78873319  9.18898423 13.06753267 12.00232562  9.90679279
+     12.68680864 12.8718913  10.96411972 12.06151515 12.48655953 14.75486872
+     11.89183232 10.95865549 12.41951884  9.68474729 11.29561017 12.10562568
+     13.75899734 13.05263832 12.13178785 12.12134074  9.75608563 13.20440463
+     11.16383782 10.26346154 12.74973926 11.47229588 12.99124527 13.49717036
+     12.93450026 13.0948024  12.33886596 14.38163196 12.25701234 10.05837121
+     11.42785152 12.84636203 10.26006492 12.23673006 12.18652681 13.16239006
+     12.36765559  9.95243932 13.63533876 11.84153594 14.67246445 12.55272787
+     13.32283794 12.99891669 15.6875     14.07959418 10.76962573 12.55465274
+     11.53669583 13.090385   11.75387311 11.84516284 12.67414993  9.28559387
+     10.12827289  9.9382298  10.10595721 11.96494353 13.62313806 10.40207787
+     11.86712553 12.02787978  9.89039277  8.1535971  15.13533331 10.97343495
+     11.76938911 12.84939788 11.83150891 10.42649467 12.58334481 11.74043293
+     12.48274693 11.06128407 13.43914541  9.59078801 14.1192412  11.84516284
+     13.80370834 10.70250589 13.55369895 10.63642315 10.051      11.08151746
+     11.16250605 11.25613999 12.56281102 12.38506086 12.895032   11.16315417
+     13.22737231 12.61454796 10.55916876 10.08237854 10.36907566 13.80049561
+     13.93697299 13.69564344 10.08543975 12.50236398 11.19431181 10.65743833
+     13.91037747 10.81109536 10.29658056  9.03116202 11.43304135 11.64291482
+     10.03791116  9.07628968 13.04302573 13.41380528 10.75577571  9.94555037]
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.175853,\"end_time\":\"2022-02-15T13:21:37.309001\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:37.133148\"}" tags="[]"}
+# 2. Check r square value of Random Forest {#2-check-r-square-value-of-random-forest}
+:::
+
+::: {.cell .code execution_count="60" execution="{\"iopub.status.busy\":\"2022-02-15T13:21:37.665315Z\",\"iopub.status.idle\":\"2022-02-15T13:21:37.668722Z\",\"iopub.execute_input\":\"2022-02-15T13:21:37.666264Z\",\"shell.execute_reply\":\"2022-02-15T13:21:37.669307Z\"}" papermill="{\"status\":\"completed\",\"duration\":0.185426,\"end_time\":\"2022-02-15T13:21:37.669496\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:37.484070\"}" tags="[]"}
+``` {.python}
+r2_n = r2_score(y_test_n, y_test_pred_n)
+print('r2_n score for a  model is', r2_n)
+```
+
+::: {.output .stream .stdout}
+    r2_n score for a  model is 0.38558625554194637
+:::
+:::
+
+::: {.cell .markdown papermill="{\"status\":\"completed\",\"duration\":0.176418,\"end_time\":\"2022-02-15T13:21:38.021079\",\"exception\":false,\"start_time\":\"2022-02-15T13:21:37.844661\"}" tags="[]"}
+# Infrence
+
+------------------------------------------------------------------------
+
+-   Random forest is performing better as compare to linner regression.
+-   r2 score is too less for making prediction
+-   G1 and G2 high correlated with Target - using any one one them lead
+    to increase in beterment of model.
+:::
